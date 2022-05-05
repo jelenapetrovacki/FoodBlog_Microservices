@@ -1,0 +1,6 @@
+
+include ':microservices:meal-service'
+include ':microservices:ingredient-service'
+include ':microservices:comment-service'
+include ':microservices:recommended-drink-service'
+include ':microservices:meal-composite-service'
