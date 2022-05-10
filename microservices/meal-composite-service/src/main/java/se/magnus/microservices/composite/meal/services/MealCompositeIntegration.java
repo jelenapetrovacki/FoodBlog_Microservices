@@ -52,7 +52,7 @@ public class MealCompositeIntegration
 			@Value("${app.recommended-drink-service.port}") int recommendedDrinkServicePort,
 
 			@Value("${app.ingredient-service.host}") String ingredientServiceHost,
-			@Value("${app.ingredient-service.port}") int ingredientDrinkServicePort,
+			@Value("${app.ingredient-service.port}") int ingredientServicePort,
 
 			@Value("${app.comment-service.host}") String commentServiceHost,
 			@Value("${app.comment-service.port}") int commentServicePort) {
@@ -61,10 +61,10 @@ public class MealCompositeIntegration
 		this.mapper = mapper;
 
 		mealServiceUrl = "http://" + mealServiceHost + ":" + mealServicePort + "/meal/";
-		recommendedDrinkServiceUrl = "http://" + recommendedDrinkServiceHost + ":" + recommendedDrinkServiceHost
+		recommendedDrinkServiceUrl = "http://" + recommendedDrinkServiceHost + ":" + recommendedDrinkServicePort
 				+ "/recommendedDrink?mealId=";
-		commentServiceUrl = "http://" + commentServiceHost + ":" + commentServiceHost + "/comment?mealId=";
-		ingredientServiceUrl = "http://" + ingredientServiceHost + ":" + ingredientServiceHost + "/ingredient?mealId=";
+		commentServiceUrl = "http://" + commentServiceHost + ":" + commentServicePort + "/comment?mealId=";
+		ingredientServiceUrl = "http://" + ingredientServiceHost + ":" + ingredientServicePort + "/ingredient?mealId=";
 	}
 
 	@Override

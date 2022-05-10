@@ -39,7 +39,7 @@ public class RecommendedDrinkServiceImpl implements RecommendedDrinkService {
         list.add(new RecommendedDrink(mealId, 2, "Name 2", "Type 2",true, "Glass 2", "Brand 2", serviceUtil.getServiceAddress()));
         list.add(new RecommendedDrink(mealId, 3, "Name 3", "Type 3",true, "Glass 3", "Brand 3", serviceUtil.getServiceAddress()));
 
-        LOG.debug("/recommendeddrink response size: {}", list.size());
+        LOG.debug("/recommendedDrink response size: {}", list.size());
 
         return list;
 	}

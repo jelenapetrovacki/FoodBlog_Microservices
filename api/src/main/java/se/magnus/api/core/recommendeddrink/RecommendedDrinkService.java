@@ -8,13 +8,13 @@ import java.util.List;
 public interface RecommendedDrinkService {
 
     /**
-     * Sample usage: curl $HOST:$PORT/recommendeddrink?mealId=1
+     * Sample usage: curl $HOST:$PORT/recommendedDrink?mealId=1
      *
      * @param mealId
      * @return
      */
     @GetMapping(
-        value    = "/recommendeddrink",
+        value    = "/recommendedDrink",
         produces = "application/json")
     List<RecommendedDrink> getRecommendedDrinks(@RequestParam(value = "mealId", required = true) int mealId);
 }
