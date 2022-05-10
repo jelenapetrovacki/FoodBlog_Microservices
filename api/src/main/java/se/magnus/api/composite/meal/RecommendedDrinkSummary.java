@@ -5,10 +5,9 @@ public class RecommendedDrinkSummary {
 	private final String drinkName;
 	private final boolean nonalcoholic;
 
-	public RecommendedDrinkSummary(int mealId, int recommendedDrinkId, String drinkType, boolean nonalcoholic,
-			String glassType, String drinkBrand, String serviceAddress) {
+	public RecommendedDrinkSummary(int recommendedDrinkId, String drinkName, boolean nonalcoholic) {
     	this.recommendedDrinkId = recommendedDrinkId;
-    	this.drinkName = drinkType;
+    	this.drinkName = drinkName;
     	this.nonalcoholic = nonalcoholic;
     }
 

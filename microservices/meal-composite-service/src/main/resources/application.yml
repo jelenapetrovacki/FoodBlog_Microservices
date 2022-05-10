@@ -1,0 +1,21 @@
+server.port: 7000
+server.error.include-message: always
+
+app:
+  meal-service:
+    host: localhost
+    port: 7001
+  comment-service:
+    host: localhost
+    port: 7002
+  ingredient-service:
+    host: localhost
+    port: 7003
+  recommended-drink-service:
+    host: localhost
+    port: 7004
+
+logging:
+  level:
+    root: INFO
+    se.magnus: DEBUG
