@@ -19,3 +19,23 @@ logging:
   level:
     root: INFO
     se.magnus: DEBUG
+    
+---
+spring.profiles: docker
+
+server.port: 8081
+
+app:
+  meal-service:
+    host: meal
+    port: 8081
+  comment-service:
+    host: comment
+    port: 8081
+  ingredient-service:
+    host: ingredient
+    port: 8081
+  recommended-drink-service:
+    host: recommended-drink
+    port: 8081
+

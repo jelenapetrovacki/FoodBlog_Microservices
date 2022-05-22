@@ -1,0 +1,34 @@
+version: '2.1'
+
+services:
+  meal:
+    build: microservices/meal-service
+    mem_limit: 350m
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  comment:
+    build: microservices/comment-service
+    mem_limit: 350m
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  ingredient:
+    build: microservices/ingredient-service
+    mem_limit: 350m
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  recommended-drink:
+    build: microservices/recommended-drink-service
+    mem_limit: 350m
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      
+  meal-composite:
+    build: microservices/meal-composite-service
+    mem_limit: 350m
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
