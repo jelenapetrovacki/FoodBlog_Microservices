@@ -24,10 +24,8 @@ public class CommentEntity {
 	public CommentEntity() {
 	}
 	
-	public CommentEntity(int id, int version, int mealId, int commentId, String author, String subject, String content,
+	public CommentEntity(int mealId, int commentId, String author, String subject, String content,
 			Date dateTime) {
-		this.id = id;
-		this.version = version;
 		this.mealId = mealId;
 		this.commentId = commentId;
 		this.author = author;

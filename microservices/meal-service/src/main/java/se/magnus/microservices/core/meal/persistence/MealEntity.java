@@ -27,10 +27,8 @@ public class MealEntity {
 	public MealEntity() {
 	}
 
-	public MealEntity(String id, Integer version, int mealId, String mealName, String category,
+	public MealEntity(int mealId, String mealName, String category,
 			String reciepeDescription, double calories, String prepartionTime, int serves) {
-		this.id = id;
-		this.version = version;
 		this.mealId = mealId;
 		this.mealName = mealName;
 		this.category = category;

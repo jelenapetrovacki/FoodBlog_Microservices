@@ -24,10 +24,7 @@ public class IngredientEntity {
 	public IngredientEntity() {
 	}
 
-	public IngredientEntity(String id, Integer version, int mealId, int ingredientId, String name, double amount,
-			String unitOfMeasure) {
-		this.id = id;
-		this.version = version;
+	public IngredientEntity(int mealId, int ingredientId, String name, double amount, String unitOfMeasure) {
 		this.mealId = mealId;
 		this.ingredientId = ingredientId;
 		this.name = name;

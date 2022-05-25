@@ -26,10 +26,8 @@ public class RecommendedDrinkEntity {
 	public RecommendedDrinkEntity() {
 	}
 	
-	public RecommendedDrinkEntity(String id, Integer version, int mealId, int recommendedDrinkId, String drinkName,
+	public RecommendedDrinkEntity(int mealId, int recommendedDrinkId, String drinkName,
 			String drinkType, boolean nonalcoholic, String glassType, String drinkBrand) {
-		this.id = id;
-		this.version = version;
 		this.mealId = mealId;
 		this.recommendedDrinkId = recommendedDrinkId;
 		this.drinkName = drinkName;
