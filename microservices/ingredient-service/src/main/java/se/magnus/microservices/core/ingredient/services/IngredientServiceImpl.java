@@ -6,11 +6,14 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.RestController;
 
 import se.magnus.api.core.comment.Comment;
 import se.magnus.api.core.ingredient.Ingredient;
 import se.magnus.api.core.ingredient.IngredientService;
+import se.magnus.microservices.core.ingredient.persistence.IngredientEntity;
+import se.magnus.microservices.core.ingredient.persistence.IngredientRepository;
 import se.magnus.util.exceptions.InvalidInputException;
 import se.magnus.util.http.ServiceUtil;
 
@@ -20,28 +23,50 @@ public class IngredientServiceImpl implements IngredientService{
 	private static final Logger LOG = LoggerFactory.getLogger(IngredientServiceImpl.class);
 
 	private final ServiceUtil serviceUtil;
+	private final IngredientMapper mapper;
+	private final IngredientRepository repository;
 
 	@Autowired
-	public IngredientServiceImpl(ServiceUtil serviceUtil) {
+	public IngredientServiceImpl(ServiceUtil serviceUtil, IngredientMapper mapper, IngredientRepository repository) {
 		this.serviceUtil = serviceUtil;
+		this.mapper = mapper; 
+		this.repository = repository;
 	}
 	
 	@Override
 	public List<Ingredient> getIngredients(int mealId) {
-		if (mealId < 1) throw new InvalidInputException("Invalid mealId: " + mealId);
+		
+		if (mealId < 1) 
+			throw new InvalidInputException("Invalid mealId: " + mealId);
+       
+        List<IngredientEntity> entityList = repository.findByMealId(mealId);
+        List<Ingredient> list = mapper.entityListToApiList(entityList);
+        list.forEach(e -> e.setServiceAddress(serviceUtil.getServiceAddress()));
 
-        if (mealId == 113) {
-            LOG.debug("No ingredients found for mealId: {}", mealId);
-            return  new ArrayList<>();
-        }
-        List<Ingredient> list = new ArrayList<>();
-        list.add(new Ingredient(mealId, 1, "Ingredient 1", 0, "g", serviceUtil.getServiceAddress()));
-        list.add(new Ingredient(mealId, 2, "Ingredient 2", 0, "g", serviceUtil.getServiceAddress()));
-        list.add(new Ingredient(mealId, 3, "Ingredient 3", 0, "g", serviceUtil.getServiceAddress()));
-
-        LOG.debug("/ingredient response size: {}", list.size());
+        LOG.debug("getIngredients: response size: {}", list.size());
 
         return list;
+	}
+
+	@Override
+	public Ingredient createIngredient(Ingredient body) {
+		try {
+			IngredientEntity entity = mapper.apiToEntity(body);
+			IngredientEntity newEntity = repository.save(entity);
+
+            LOG.debug("createIngredient: created a ingredient entity: {}/{}", body.getMealId(), body.getIngredientId());
+            return mapper.entityToApi(newEntity);
+
+        } catch (DuplicateKeyException dke) {
+            throw new InvalidInputException("Duplicate key, Meal Id: " + body.getMealId() + ", Ingredient Id:" + body.getIngredientId());
+        }
+	}
+
+	@Override
+	public void deleteIngredients(int mealId) {
+		LOG.debug("deleteIngredients: tries to delete ingredients for the meal with mealId: {}", mealId);
+        repository.deleteAll(repository.findByMealId(mealId));
+		
 	}
 
 }

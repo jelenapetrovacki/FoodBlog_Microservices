@@ -1,15 +1,16 @@
 package se.magnus.api.core.meal;
 
 public class Meal {
-	private final int mealId;
-	private final String mealName;
-	private final String category;
-	private final String reciepeDescription;
-	private final double calories;
-	private final String prepartionTime;
-	private final int serves;
-	private final String serviceAddress;
+	private int mealId;
+	private String mealName;
+	private String category;
+	private String reciepeDescription;
+	private double calories;
+	private String prepartionTime;
+	private int serves;
+	private String serviceAddress;
 
+	
 	public Meal() {
 		mealId = 0;
 		mealName = null;
@@ -64,4 +65,37 @@ public class Meal {
 	public String getServiceAddress() {
 		return serviceAddress;
 	}
+
+	public void setMealId(int mealId) {
+		this.mealId = mealId;
+	}
+
+	public void setMealName(String mealName) {
+		this.mealName = mealName;
+	}
+
+	public void setCategory(String category) {
+		this.category = category;
+	}
+
+	public void setReciepeDescription(String reciepeDescription) {
+		this.reciepeDescription = reciepeDescription;
+	}
+
+	public void setCalories(double calories) {
+		this.calories = calories;
+	}
+
+	public void setPrepartionTime(String prepartionTime) {
+		this.prepartionTime = prepartionTime;
+	}
+
+	public void setServes(int serves) {
+		this.serves = serves;
+	}
+
+	public void setServiceAddress(String serviceAddress) {
+		this.serviceAddress = serviceAddress;
+	}
+
 }

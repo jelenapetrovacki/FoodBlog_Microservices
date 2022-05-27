@@ -1,12 +1,12 @@
 package se.magnus.api.core.ingredient;
 
 public class Ingredient {
-    private final int mealId;
-    private final int ingredientId;
-    private final String name;
-    private final double amount;
-    private final String unitOfMeasure;
-    private final String serviceAddress;
+    private int mealId;
+    private int ingredientId;
+    private String name;
+    private double amount;
+    private String unitOfMeasure;
+    private String serviceAddress;
     
     public Ingredient() {
     	mealId = 0;
@@ -49,4 +49,28 @@ public class Ingredient {
     public String getServiceAddress() {
         return serviceAddress;
     }
+
+	public void setMealId(int mealId) {
+		this.mealId = mealId;
+	}
+
+	public void setIngredientId(int ingredientId) {
+		this.ingredientId = ingredientId;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public void setAmount(double amount) {
+		this.amount = amount;
+	}
+
+	public void setUnitOfMeasure(String unitOfMeasure) {
+		this.unitOfMeasure = unitOfMeasure;
+	}
+
+	public void setServiceAddress(String serviceAddress) {
+		this.serviceAddress = serviceAddress;
+	}
 }

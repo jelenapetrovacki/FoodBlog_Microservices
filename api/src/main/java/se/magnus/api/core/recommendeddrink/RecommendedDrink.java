@@ -1,14 +1,14 @@
 package se.magnus.api.core.recommendeddrink;
 
 public class RecommendedDrink {
-	private final int mealId;
-	private final int recommendedDrinkId;
-	private final String drinkName;
-	private final String drinkType;
-	private final boolean nonalcoholic;
-	private final String glassType;
-	private final String drinkBrand;
-	private final String serviceAddress;
+	private int mealId;
+	private int recommendedDrinkId;
+	private String drinkName;
+	private String drinkType;
+	private boolean nonalcoholic;
+	private String glassType;
+	private String drinkBrand;
+	private String serviceAddress;
 
 	public RecommendedDrink() {
     	mealId = 0;
@@ -63,5 +63,37 @@ public class RecommendedDrink {
 	
 	public String getServiceAddress() {
 		return serviceAddress;
+	}
+
+	public void setMealId(int mealId) {
+		this.mealId = mealId;
+	}
+
+	public void setRecommendedDrinkId(int recommendedDrinkId) {
+		this.recommendedDrinkId = recommendedDrinkId;
+	}
+
+	public void setDrinkName(String drinkName) {
+		this.drinkName = drinkName;
+	}
+
+	public void setDrinkType(String drinkType) {
+		this.drinkType = drinkType;
+	}
+
+	public void setNonalcoholic(boolean nonalcoholic) {
+		this.nonalcoholic = nonalcoholic;
+	}
+
+	public void setGlassType(String glassType) {
+		this.glassType = glassType;
+	}
+
+	public void setDrinkBrand(String drinkBrand) {
+		this.drinkBrand = drinkBrand;
+	}
+
+	public void setServiceAddress(String serviceAddress) {
+		this.serviceAddress = serviceAddress;
 	}
 }

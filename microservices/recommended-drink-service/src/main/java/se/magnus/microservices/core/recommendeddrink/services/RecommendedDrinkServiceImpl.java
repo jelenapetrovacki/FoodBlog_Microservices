@@ -1,16 +1,17 @@
 package se.magnus.microservices.core.recommendeddrink.services;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.RestController;
 
-import se.magnus.api.core.comment.Comment;
 import se.magnus.api.core.recommendeddrink.RecommendedDrink;
 import se.magnus.api.core.recommendeddrink.RecommendedDrinkService;
+import se.magnus.microservices.core.recommendeddrink.persistence.RecommendedDrinkEntity;
+import se.magnus.microservices.core.recommendeddrink.persistence.RecommendedDrinkRepository;
 import se.magnus.util.exceptions.InvalidInputException;
 import se.magnus.util.http.ServiceUtil;
 
@@ -20,28 +21,50 @@ public class RecommendedDrinkServiceImpl implements RecommendedDrinkService {
 	private static final Logger LOG = LoggerFactory.getLogger(RecommendedDrinkServiceImpl.class);
 
 	private final ServiceUtil serviceUtil;
+	private final RecommendedDrinkMapper mapper;
+	private final RecommendedDrinkRepository repository;
 
 	@Autowired
-	public RecommendedDrinkServiceImpl(ServiceUtil serviceUtil) {
+	public RecommendedDrinkServiceImpl(ServiceUtil serviceUtil, RecommendedDrinkMapper mapper,
+			RecommendedDrinkRepository repository) {
 		this.serviceUtil = serviceUtil;
+		this.mapper = mapper;
+		this.repository = repository;
 	}
-	
+
 	@Override
 	public List<RecommendedDrink> getRecommendedDrinks(int mealId) {
-		if (mealId < 1) throw new InvalidInputException("Invalid mealId: " + mealId);
+		if (mealId < 1)
+			throw new InvalidInputException("Invalid mealId: " + mealId);
 
-        if (mealId == 113) {
-            LOG.debug("No drinks found for mealId: {}", mealId);
-            return  new ArrayList<>();
+		List<RecommendedDrinkEntity> entityList = repository.findByMealId(mealId);
+		List<RecommendedDrink> list = mapper.entityListToApiList(entityList);
+		list.forEach(e -> e.setServiceAddress(serviceUtil.getServiceAddress()));
+
+		LOG.debug("getRecommendedDrinks: response size: {}", list.size());
+
+		return list;
+	}
+
+	@Override
+	public RecommendedDrink createRecommendedDrink(RecommendedDrink body) {
+		try {
+			RecommendedDrinkEntity entity = mapper.apiToEntity(body);
+			RecommendedDrinkEntity newEntity = repository.save(entity);
+
+            LOG.debug("createRecommendedDrnik: created a recommended drink entity: {}/{}", body.getMealId(), body.getRecommendedDrinkId());
+            return mapper.entityToApi(newEntity);
+
+        } catch (DuplicateKeyException dke) {
+            throw new InvalidInputException("Duplicate key, Meal Id: " + body.getMealId() + ", Recommended Drink Id:" + body.getRecommendedDrinkId());
         }
-        List<RecommendedDrink> list = new ArrayList<>();
-        list.add(new RecommendedDrink(mealId, 1, "Name 1", "Type 1",true, "Glass 1", "Brand 1", serviceUtil.getServiceAddress()));
-        list.add(new RecommendedDrink(mealId, 2, "Name 2", "Type 2",true, "Glass 2", "Brand 2", serviceUtil.getServiceAddress()));
-        list.add(new RecommendedDrink(mealId, 3, "Name 3", "Type 3",true, "Glass 3", "Brand 3", serviceUtil.getServiceAddress()));
+	}
 
-        LOG.debug("/recommendedDrink response size: {}", list.size());
+	@Override
+	public void deleteRecommendedDrinks(int mealId) {
+		LOG.debug("deleteRecommendedDrniks: tries to delete recommended drniks for the meal with mealId: {}", mealId);
+        repository.deleteAll(repository.findByMealId(mealId));
 
-        return list;
 	}
 
 }
