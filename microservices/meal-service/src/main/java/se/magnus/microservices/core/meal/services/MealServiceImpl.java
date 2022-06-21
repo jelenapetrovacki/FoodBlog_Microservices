@@ -25,9 +25,9 @@ public class MealServiceImpl implements MealService {
 
 	@Autowired
 	public MealServiceImpl(MealRepository repository, MealMapper mapper, ServiceUtil serviceUtil) {
-		this.serviceUtil = serviceUtil;
 		this.repository = repository;
 		this.mapper = mapper;
+		this.serviceUtil = serviceUtil;
 	}
 
 	@Override

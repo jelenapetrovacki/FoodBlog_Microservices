@@ -1,5 +1,7 @@
 package se.magnus.microservices.composite.meal.services;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +24,8 @@ import se.magnus.util.http.ServiceUtil;
 @RestController
 public class MealCompositeServiceImpl implements MealCompositeService {
 
+	private static final Logger LOG = LoggerFactory.getLogger(MealCompositeServiceImpl.class);
+
 	private final ServiceUtil serviceUtil;
 	private MealCompositeIntegration integration;
 
@@ -43,7 +47,68 @@ public class MealCompositeServiceImpl implements MealCompositeService {
 
 		List<Ingredient> ingredients = integration.getIngredients(mealId);
 
+		LOG.debug("getCompositeMeal: aggregate entity found for mealId: {}", mealId);
+
 		return createMealAggregate(meal, comments, recommendedDrinks, ingredients, serviceUtil.getServiceAddress());
+	}
+
+	@Override
+	public void createCompositeMeal(MealAggregate body) {
+		try {
+
+			LOG.debug("createCompositeMeal: creates a new composite entity for mealId: {}", body.getMealId());
+
+			Meal meal = new Meal(body.getMealId(), body.getMealName(), body.getCategory(), body.getReciepeDescription(),
+					body.getCalories(), body.getPrepartionTime(), body.getServes(), null);
+			integration.createMeal(meal);
+
+			if (body.getIngredients() != null) {
+				body.getIngredients().forEach(r -> {
+					Ingredient ingredient = new Ingredient(body.getMealId(), r.getIngredientId(), r.getName(),
+							(int) r.getAmount(), r.getUnitOfMeasure(), null);
+					integration.createIngredient(ingredient);
+				});
+			}
+
+			if (body.getComments() != null) {
+				body.getComments().forEach(r -> {
+					Comment comment = new Comment(body.getMealId(), r.getCommentId(), r.getAuthor(), r.getSubject(),
+							null, null, null);
+					integration.createComment(comment);
+				});
+			}
+
+			if (body.getRecommendedDrinks() != null) {
+				body.getRecommendedDrinks().forEach(r -> {
+					RecommendedDrink recommendedDrink = new RecommendedDrink(body.getMealId(),
+							r.getRecommendedDrinkId(), r.getDrinkName(), null, false, null, null, null);
+					integration.createRecommendedDrink(recommendedDrink);
+				});
+			}
+
+			LOG.debug("createCompositeMeal: composite entites created for mealId: {}", body.getMealId());
+
+		} catch (RuntimeException re) {
+			LOG.warn("createCompositeProduct failed", re);
+			throw re;
+		}
+
+	}
+
+	@Override
+	public void deleteCompositeMeal(int mealId) {
+		LOG.debug("deleteCompositeMeal: Deletes a meal aggregate for mealId: {}", mealId);
+
+		integration.deleteMeal(mealId);
+
+		integration.deleteIngredients(mealId);
+
+		integration.deleteComments(mealId);
+		
+		integration.deleteRecommendedDrinks(mealId);
+
+		LOG.debug("getCompositeMeal: aggregate entities deleted for mealId: {}", mealId);
+
 	}
 
 	private MealAggregate createMealAggregate(Meal meal, List<Comment> comments,
@@ -53,6 +118,10 @@ public class MealCompositeServiceImpl implements MealCompositeService {
 		int mealId = meal.getMealId();
 		String name = meal.getMealName();
 		String category = meal.getCategory();
+		String recipeDescription = meal.getReciepeDescription();
+		double calories = meal.getCalories();
+		String preparationTime = meal.getPrepartionTime();
+		int serves = meal.getServes();
 
 		// 2. Copy summary recommendedDrinks info, if available
 		List<RecommendedDrinkSummary> recommendedDrinksSummaries = (recommendedDrinks == null) ? null
@@ -81,8 +150,8 @@ public class MealCompositeServiceImpl implements MealCompositeService {
 		ServiceAddresses serviceAddresses = new ServiceAddresses(serviceAddress, mealAddress, ingredientAddress,
 				commentAddress, recommendedDrinkAddress);
 
-		return new MealAggregate(mealId, name, category, ingredientsSummaries, commentsSummaries, recommendedDrinksSummaries,
-				serviceAddresses);
+		return new MealAggregate(mealId, name, category, recipeDescription, calories, preparationTime, serves,
+				ingredientsSummaries, commentsSummaries, recommendedDrinksSummaries, serviceAddresses);
 	}
 
 }

@@ -1,4 +1,3 @@
-
 package se.magnus.api.core.meal;
 
 import org.springframework.web.bind.annotation.DeleteMapping;

@@ -9,9 +9,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import se.magnus.api.composite.meal.CommentSummary;
+import se.magnus.api.composite.meal.IngredientSummary;
+import se.magnus.api.composite.meal.MealAggregate;
+import se.magnus.api.composite.meal.RecommendedDrinkSummary;
+import se.magnus.api.composite.meal.ServiceAddresses;
 import se.magnus.api.core.comment.Comment;
 import se.magnus.api.core.ingredient.Ingredient;
 import se.magnus.api.core.meal.Meal;
@@ -23,8 +29,11 @@ import se.magnus.util.exceptions.NotFoundException;
 import static java.util.Collections.singletonList;
 import static org.mockito.Mockito.when;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
-import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
+import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static reactor.core.publisher.Mono.just;
+
+import java.util.List;
 
 //@ExtendWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = RANDOM_PORT)
@@ -45,7 +54,8 @@ class MealCompositeServiceApplicationTests {
 
 		when(compositeIntegration.getMeal(MEAL_ID_OK))
 				.thenReturn(new Meal(MEAL_ID_OK, "name", "category", "desc", 100, "1h", 1, "mock-address"));
-		when(compositeIntegration.getRecommendedDrinks(MEAL_ID_OK)).thenReturn(singletonList(
+		when(compositeIntegration.getRecommendedDrinks(MEAL_ID_OK)).thenReturn(
+				singletonList(
 				new RecommendedDrink(MEAL_ID_OK, 1, "name", "type", true, "glass", "brand", "mock address")));
 		when(compositeIntegration.getComments(MEAL_ID_OK)).thenReturn(
 				singletonList(new Comment(MEAL_ID_OK, 1, "author", "subject", "content", null, "mock address")));
@@ -62,12 +72,45 @@ class MealCompositeServiceApplicationTests {
 	@Test
 	void contextLoads() {
 	}
+	/*
+	@Test
+	public void createCompositeMeal1() {
 
+		 
+		MealAggregate compositeMeal = new MealAggregate(1, "name", "category", "desc", 100, "1h", 2, null, null, null, null);
+
+		postAndVerifyMeal(compositeMeal, OK);
+	}
+	
+	@Test
+	public void createCompositeMeal2() {
+		
+		MealAggregate compositeMeal = new MealAggregate(1, "name", "category", "desc", 100, "1h", 2, 
+				singletonList(new IngredientSummary(1, "name", 100, "g")), 
+				singletonList(new CommentSummary(1, "A.P.", "Subject")), 
+				singletonList(new RecommendedDrinkSummary(1, "name", true)), null);
+
+		postAndVerifyMeal(compositeMeal, OK);
+	}
+
+	@Test
+	public void deleteCompositeMeal() {
+		MealAggregate compositeMeal = new MealAggregate(1, "name", "category", "desc", 100, "1h", 2, 
+				singletonList(new IngredientSummary(1, "name", 100, "g")), 
+				singletonList(new CommentSummary(1, "A.P.", "Subject")), 
+				singletonList(new RecommendedDrinkSummary(1, "name", true)), null);
+
+
+		postAndVerifyMeal(compositeMeal, OK);
+
+		deleteAndVerifyMeal(compositeMeal.getMealId(), OK);
+		deleteAndVerifyMeal(compositeMeal.getMealId(), OK);
+	}
+*/	
 	@Test
 	public void getMealById() {
 
-		client.get().uri("/meal-composite/" + MEAL_ID_OK).accept(APPLICATION_JSON).exchange().expectStatus().isOk()
-				.expectHeader().contentType(APPLICATION_JSON).expectBody()
+		getAndVerifyMeal(MEAL_ID_OK, OK)
 				.jsonPath("$.mealId").isEqualTo(MEAL_ID_OK)
 				.jsonPath("$.recommendedDrinks.length()").isEqualTo(1)
 				.jsonPath("$.comments.length()").isEqualTo(1)
@@ -77,8 +120,7 @@ class MealCompositeServiceApplicationTests {
 	@Test
 	public void getMealNotFound() {
 
-		client.get().uri("/meal-composite/" + MEAL_ID_NOT_FOUND).accept(APPLICATION_JSON).exchange().expectStatus()
-				.isNotFound().expectHeader().contentType(APPLICATION_JSON).expectBody()
+		getAndVerifyMeal(MEAL_ID_NOT_FOUND, NOT_FOUND)
 				.jsonPath("$.path").isEqualTo("/meal-composite/" + MEAL_ID_NOT_FOUND)
 				.jsonPath("$.message").isEqualTo("NOT FOUND: " + MEAL_ID_NOT_FOUND);
 	}
@@ -86,10 +128,34 @@ class MealCompositeServiceApplicationTests {
 	@Test
 	public void getMealInvalidInput() {
 
-		client.get().uri("/meal-composite/" + MEAL_ID_INVALID).accept(APPLICATION_JSON).exchange().expectStatus()
-				.isEqualTo(UNPROCESSABLE_ENTITY).expectHeader().contentType(APPLICATION_JSON).expectBody()
+		getAndVerifyMeal(MEAL_ID_INVALID, UNPROCESSABLE_ENTITY)
 				.jsonPath("$.path").isEqualTo("/meal-composite/" + MEAL_ID_INVALID)
 				.jsonPath("$.message").isEqualTo("INVALID: " + MEAL_ID_INVALID);
+	}
+	
+	private WebTestClient.BodyContentSpec getAndVerifyMeal(int mealId, HttpStatus expectedStatus) {
+		return client.get()
+			.uri("/meal-composite/" + mealId)
+			.accept(APPLICATION_JSON)
+			.exchange()
+			.expectStatus().isEqualTo(expectedStatus)
+			.expectHeader().contentType(APPLICATION_JSON)
+			.expectBody();
+	}
+
+	private void postAndVerifyMeal(MealAggregate compositeMeal, HttpStatus expectedStatus) {
+		client.post()
+			.uri("/meal-composite")
+			.body(just(compositeMeal), MealAggregate.class)
+			.exchange()
+			.expectStatus().isEqualTo(expectedStatus);
+	}
+
+	private void deleteAndVerifyMeal(int mealId, HttpStatus expectedStatus) {
+		client.delete()
+			.uri("/meal-composite/" + mealId)
+			.exchange()
+			.expectStatus().isEqualTo(expectedStatus);
 	}
 
 }

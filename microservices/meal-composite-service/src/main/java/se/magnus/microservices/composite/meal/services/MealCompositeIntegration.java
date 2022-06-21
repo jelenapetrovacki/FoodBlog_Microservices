@@ -55,22 +55,24 @@ public class MealCompositeIntegration
 			@Value("${app.ingredient-service.port}") int ingredientServicePort,
 
 			@Value("${app.comment-service.host}") String commentServiceHost,
-			@Value("${app.comment-service.port}") int commentServicePort) {
+			@Value("${app.comment-service.port}") int commentServicePort
+			
+			) {
 
 		this.restTemplate = restTemplate;
 		this.mapper = mapper;
 
-		mealServiceUrl = "http://" + mealServiceHost + ":" + mealServicePort + "/meal/";
+		mealServiceUrl = "http://" + mealServiceHost + ":" + mealServicePort + "/meal";
 		recommendedDrinkServiceUrl = "http://" + recommendedDrinkServiceHost + ":" + recommendedDrinkServicePort
-				+ "/recommendedDrink?mealId=";
-		commentServiceUrl = "http://" + commentServiceHost + ":" + commentServicePort + "/comment?mealId=";
-		ingredientServiceUrl = "http://" + ingredientServiceHost + ":" + ingredientServicePort + "/ingredient?mealId=";
+				+ "/recommendedDrink";
+		commentServiceUrl = "http://" + commentServiceHost + ":" + commentServicePort + "/comment";
+		ingredientServiceUrl = "http://" + ingredientServiceHost + ":" + ingredientServicePort + "/ingredient";
 	}
 
 	@Override
 	public Meal getMeal(int mealId) {
 		try {
-			String url = mealServiceUrl + mealId;
+			String url = mealServiceUrl + "/" + mealId;
 			LOG.debug("Will call getMeal API on URL: {}", url);
 
 			Meal meal = restTemplate.getForObject(url, Meal.class);
@@ -79,35 +81,44 @@ public class MealCompositeIntegration
 			return meal;
 
 		} catch (HttpClientErrorException ex) {
-
-			switch (ex.getStatusCode()) {
-
-			case NOT_FOUND:
-				throw new NotFoundException(getErrorMessage(ex));
-
-			case UNPROCESSABLE_ENTITY:
-				throw new InvalidInputException(getErrorMessage(ex));
-
-			default:
-				LOG.warn("Got a unexpected HTTP error: {}, will rethrow it", ex.getStatusCode());
-				LOG.warn("Error body: {}", ex.getResponseBodyAsString());
-				throw ex;
-			}
+			throw handleHttpClientException(ex);
 		}
+		
 	}
 
-	private String getErrorMessage(HttpClientErrorException ex) {
+	@Override
+	public Meal createMeal(Meal body) {
 		try {
-			return mapper.readValue(ex.getResponseBodyAsString(), HttpErrorInfo.class).getMessage();
-		} catch (IOException ioex) {
-			return ex.getMessage();
+			String url = mealServiceUrl;
+			LOG.debug("Will post a new meal to URL: {}", url);
+
+			Meal meal = restTemplate.postForObject(url, body, Meal.class);
+			LOG.debug("Created a meal with id: {}", meal.getMealId());
+
+			return meal;
+
+		} catch (HttpClientErrorException ex) {
+			throw handleHttpClientException(ex);
 		}
 	}
-	
+
+	@Override
+	public void deleteMeal(int mealId) {
+		try {
+            String url = mealServiceUrl + "/" + mealId;
+            LOG.debug("Will call the deleteMeal API on URL: {}", url);
+
+            restTemplate.delete(url);
+
+        } catch (HttpClientErrorException ex) {
+            throw handleHttpClientException(ex);
+        }
+	}
+
 	@Override
 	public List<RecommendedDrink> getRecommendedDrinks(int mealId) {
 		try {
-			String url = recommendedDrinkServiceUrl + mealId;
+			String url = recommendedDrinkServiceUrl + "?mealId=" +  mealId;
 
 			LOG.debug("Will call getRecommendedDrink API on URL: {}", url);
 			List<RecommendedDrink> recommendedDrinks = restTemplate
@@ -122,12 +133,45 @@ public class MealCompositeIntegration
 					ex.getMessage());
 			return new ArrayList<>();
 		}
+		
 	}
+	
+
+	@Override
+	public RecommendedDrink createRecommendedDrink(RecommendedDrink body) {
+		try {
+            String url = recommendedDrinkServiceUrl;
+            LOG.debug("Will post a new recommended drink to URL: {}", url);
+
+            RecommendedDrink recommendedDrink = restTemplate.postForObject(url, body, RecommendedDrink.class);
+            LOG.debug("Created a recommended drink with id: {}", recommendedDrink.getRecommendedDrinkId());
+
+            return recommendedDrink;
+
+        } catch (HttpClientErrorException ex) {
+            throw handleHttpClientException(ex);
+        }
+	}
+
+	@Override
+	public void deleteRecommendedDrinks(int mealId) {
+		try {
+            String url = recommendedDrinkServiceUrl + "?mealId=" + mealId;
+            LOG.debug("Will call the deleteRecommendedDrinks() API on URL: {}", url);
+
+            restTemplate.delete(url);
+
+        } catch (HttpClientErrorException ex) {
+            throw handleHttpClientException(ex);
+        }
+
+	}
+
 
 	@Override
 	public List<Comment> getComments(int mealId) {
 		try {
-			String url = commentServiceUrl + mealId;
+			String url = commentServiceUrl + "?mealId=" + mealId;
 
 			LOG.debug("Will call getComments API on URL: {}", url);
 			List<Comment> comments = restTemplate
@@ -144,9 +188,38 @@ public class MealCompositeIntegration
 	}
 
 	@Override
+	public Comment createComment(Comment body) {
+		try {
+            String url = commentServiceUrl;
+            LOG.debug("Will post a new comment to URL: {}", url);
+
+            Comment comment = restTemplate.postForObject(url, body, Comment.class);
+            LOG.debug("Created a comment with id: {}", comment.getCommentId());
+
+            return comment;
+
+        } catch (HttpClientErrorException ex) {
+            throw handleHttpClientException(ex);
+        }
+	}
+
+	@Override
+	public void deleteComments(int mealId) {
+		try {
+            String url = commentServiceUrl + "?mealId=" + mealId;
+            LOG.debug("Will call the deleteComments() API on URL: {}", url);
+
+            restTemplate.delete(url);
+
+        } catch (HttpClientErrorException ex) {
+            throw handleHttpClientException(ex);
+        }
+	}
+
+	@Override
 	public List<Ingredient> getIngredients(int mealId) {
 		try {
-			String url = ingredientServiceUrl + mealId;
+			String url = ingredientServiceUrl + "?mealId=" + mealId;
 
 			LOG.debug("Will call getIngredients API on URL: {}", url);
 			List<Ingredient> ingredients = restTemplate
@@ -159,6 +232,60 @@ public class MealCompositeIntegration
 		} catch (Exception ex) {
 			LOG.warn("Got an exception while requesting ingredients, return zero ingredients: {}", ex.getMessage());
 			return new ArrayList<>();
+		}
+	}
+
+	@Override
+	public Ingredient createIngredient(Ingredient body) {
+		try {
+            String url = ingredientServiceUrl;
+            LOG.debug("Will post a new ingredient to URL: {}", url);
+
+            Ingredient ingredient = restTemplate.postForObject(url, body, Ingredient.class);
+            LOG.debug("Created a ingredient with id: {}", ingredient.getIngredientId());
+
+            return ingredient;
+
+        } catch (HttpClientErrorException ex) {
+            throw handleHttpClientException(ex);
+        }
+	}
+
+	@Override
+	public void deleteIngredients(int mealId) {
+		try {
+            String url = ingredientServiceUrl + "?mealId=" + mealId;
+            LOG.debug("Will call the deleteIngredients() API on URL: {}", url);
+
+            restTemplate.delete(url);
+
+        } catch (HttpClientErrorException ex) {
+            throw handleHttpClientException(ex);
+        }
+	}
+	
+    private RuntimeException handleHttpClientException(HttpClientErrorException ex) {
+        switch (ex.getStatusCode()) {
+
+        case NOT_FOUND:
+            return new NotFoundException(getErrorMessage(ex));
+
+        case UNPROCESSABLE_ENTITY :
+            return new InvalidInputException(getErrorMessage(ex));
+
+        default:
+            LOG.warn("Got a unexpected HTTP error: {}, will rethrow it", ex.getStatusCode());
+            LOG.warn("Error body: {}", ex.getResponseBodyAsString());
+            return ex;
+        }
+    }
+    
+
+	private String getErrorMessage(HttpClientErrorException ex) {
+		try {
+			return mapper.readValue(ex.getResponseBodyAsString(), HttpErrorInfo.class).getMessage();
+		} catch (IOException ioex) {
+			return ex.getMessage();
 		}
 	}
 

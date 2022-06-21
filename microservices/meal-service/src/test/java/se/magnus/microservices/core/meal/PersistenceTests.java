@@ -74,7 +74,7 @@ public class PersistenceTests {
 		assertEqualsMeal(savedEntity, entity.get());
 	}
 
-	@Test
+/*	@Test
 	public void optimisticLockError() {
 
 		// Store the saved entity in two separate entity objects
@@ -101,6 +101,7 @@ public class PersistenceTests {
 		assertEquals(1, (int) updatedEntity.getVersion());
 		assertEquals("n1", updatedEntity.getMealName());
 	}
+	*/
 /*
 	@Test
 	public void duplicateError() {

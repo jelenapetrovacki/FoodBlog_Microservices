@@ -5,7 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 
-@Document(collection = "ingredients")
+@Document(collection="ingredients")
 @CompoundIndex(name = "meal-ing-id", unique = true, def = "{'mealId': 1, 'ingredientId' : 1}")
 public class IngredientEntity {
 

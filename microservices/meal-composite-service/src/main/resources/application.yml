@@ -36,6 +36,22 @@ api:
         ## Negative meal ids
         422 - An <b>Unprocessable Entity</b> error will be returned
         
+    create-composite-meal:
+      description: Creates a composite meal
+      notes: |
+        # Normal response
+        The composite meal information posted to the API will be splitted up and stored as separate meal-info, ingredient, recommended drink and comment entities.
+        # Expected error responses
+        1. If a meal with the same mealId as specified in the posted information already exists,
+           an <b>422 - Unprocessable Entity</b> error with a "duplicate key" error message will be returned
+    delete-composite-meal:
+      description: Deletes a meal composite
+      notes: |
+        # Normal response
+        Entities for meal information, recommended drinks, ingredients and comments related to the specificed mealId will be deleted.
+        The implementation of the delete method is idempotent, i.e. it can be called several times with the same response.
+        This means that a delete request of a non existing meal will return <b>200 Ok</b>.
+        
 server.port: 7000
 server.error.include-message: always
 
