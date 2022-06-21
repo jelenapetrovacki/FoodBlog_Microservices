@@ -72,7 +72,7 @@ class MealCompositeServiceApplicationTests {
 	@Test
 	void contextLoads() {
 	}
-	/*
+
 	@Test
 	public void createCompositeMeal1() {
 
@@ -106,7 +106,7 @@ class MealCompositeServiceApplicationTests {
 		deleteAndVerifyMeal(compositeMeal.getMealId(), OK);
 		deleteAndVerifyMeal(compositeMeal.getMealId(), OK);
 	}
-*/	
+	
 	@Test
 	public void getMealById() {
 

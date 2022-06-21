@@ -5,6 +5,12 @@ public class RecommendedDrinkSummary {
 	private final String drinkName;
 	private final boolean nonalcoholic;
 
+	public RecommendedDrinkSummary() {
+    	this.recommendedDrinkId = 0;
+    	this.drinkName = null;
+    	this.nonalcoholic = true;
+    }
+	
 	public RecommendedDrinkSummary(int recommendedDrinkId, String drinkName, boolean nonalcoholic) {
     	this.recommendedDrinkId = recommendedDrinkId;
     	this.drinkName = drinkName;

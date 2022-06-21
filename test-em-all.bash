@@ -79,6 +79,65 @@ function waitForService() {
     done
 }
 
+function recreateComposite() {
+    local mealId=$1
+    local composite=$2
+
+    assertCurl 200 "curl -X DELETE http://$HOST:$PORT/meal-composite/${mealId} -s"
+    curl -X POST http://$HOST:$PORT/meal-composite -H "Content-Type: application/json" --data "$composite"
+}
+
+function setupTestdata() {
+int commentId, String author, String subject
+    body=\
+'{"mealId":1,"mealName":"meal 1","category":"category 1", "reciepeDescription":"description", "calories":1, "prepartionTime":"1h",
+  "serves":1,
+    "ingredients":[
+        {"ingredientId":1,"name":"ing name 1","amount":1,"unitOfMeasure":"kg"},
+        {"ingredientId":2,"name":"ing name 2","amount":1,"unitOfMeasure":"kg"},
+        {"ingredientId":3,"name":"ing name 3","amount":1,"unitOfMeasure":"kg"}
+    ], "recommendedDrinks":[
+        {"recommendedDrinkId":1,"drinkName":"drink name 1","nonalcoholic":true},
+        {"recommendedDrinkId":1,"drinkName":"drink name 1","nonalcoholic":true},
+        {"recommendedDrinkId":1,"drinkName":"drink name 1","nonalcoholic":true}
+    ], "comments":[
+        {"commentId":1,"author":"author 1","subject":"subject 1"},
+        {"commentId":2,"author":"author 2","subject":"subject 2"},
+       {"commentId":3,"author":"author 3","subject":"subject 3"}
+    ]}'
+    recreateComposite 1 "$body"
+
+    body=\
+'{"mealId":113,"mealName":"meal 113","category":"category 113", "reciepeDescription":"description", "calories":113, "prepartionTime":"1h",
+  "serves":113,
+    "ingredients":[
+        {"ingredientId":1,"name":"ing name 1","amount":1,"unitOfMeasure":"kg"},
+        {"ingredientId":2,"name":"ing name 2","amount":1,"unitOfMeasure":"kg"},
+        {"ingredientId":3,"name":"ing name 3","amount":1,"unitOfMeasure":"kg"}
+    ]}'
+    recreateComposite 113 "$body"
+
+    body=\
+'{"mealId":213,"mealName":"meal 213","category":"category 213", "reciepeDescription":"description", "calories":213, "prepartionTime":"1h",
+  "serves":213,
+    "recommendedDrinks":[
+        {"recommendedDrinkId":1,"drinkName":"drink name 1","nonalcoholic":true},
+        {"recommendedDrinkId":1,"drinkName":"drink name 1","nonalcoholic":true},
+        {"recommendedDrinkId":1,"drinkName":"drink name 1","nonalcoholic":true}
+    ]}'
+    recreateComposite 213 "$body"
+
+    body=\
+'{"mealId":313,"mealName":"meal 313","category":"category 313", "reciepeDescription":"description", "calories":313, "prepartionTime":"1h",
+    "serves":313,
+      "comments":[
+            {"commentId":1,"author":"author 1","subject":"subject 1"},
+            {"commentId":2,"author":"author 2","subject":"subject 2"},
+            {"commentId":3,"author":"author 3","subject":"subject 3"}
+      ]}'
+      recreateComposite 313 "$body"
+}
+
 set -e
 
 echo "Start:" `date`
@@ -95,7 +154,9 @@ then
     docker-compose up -d
 fi
 
-waitForService http://$HOST:$PORT/meal-composite/1
+waitForService curl -X DELETE http://$HOST:$PORT/product-composite/13
+
+setupTestdata
 
 # Verify that a normal request works, expect three recommendedDrinks, three comments and three ingredients
 assertCurl 200 "curl http://$HOST:$PORT/meal-composite/1 -s"

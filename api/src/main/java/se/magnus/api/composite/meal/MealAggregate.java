@@ -15,6 +15,20 @@ public class MealAggregate {
     private final List<RecommendedDrinkSummary> recommendedDrinks;
     private final ServiceAddresses serviceAddresses;
 
+    public MealAggregate() {
+    	mealId= 0;
+    	mealName = null; 
+    	category = null;
+    	reciepeDescription = null; 
+    	calories = 0;
+    	prepartionTime = null;
+    	serves = 0;
+    	ingredients = null;
+    	comments = null; 
+    	recommendedDrinks = null;
+    	serviceAddresses = null;
+    }
+    
     public MealAggregate(
     		int mealId, String mealName, String category, String reciepeDescription, double calories, String prepartionTime, int serves,
     		List<IngredientSummary> ingredients, 
