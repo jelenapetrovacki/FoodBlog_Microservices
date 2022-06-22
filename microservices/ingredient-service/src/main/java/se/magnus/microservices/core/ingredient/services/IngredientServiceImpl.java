@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.RestController;
 
+import reactor.core.publisher.Flux;
 import se.magnus.api.core.comment.Comment;
 import se.magnus.api.core.ingredient.Ingredient;
 import se.magnus.api.core.ingredient.IngredientService;
@@ -34,18 +35,15 @@ public class IngredientServiceImpl implements IngredientService{
 	}
 	
 	@Override
-	public List<Ingredient> getIngredients(int mealId) {
+	public Flux<Ingredient> getIngredients(int mealId) {
 		
 		if (mealId < 1) 
 			throw new InvalidInputException("Invalid mealId: " + mealId);
-       
-        List<IngredientEntity> entityList = repository.findByMealId(mealId);
-        List<Ingredient> list = mapper.entityListToApiList(entityList);
-        list.forEach(e -> e.setServiceAddress(serviceUtil.getServiceAddress()));
 
-        LOG.debug("getIngredients: response size: {}", list.size());
-
-        return list;
+		return repository.findByMealId(mealId)
+				.log()
+				.map(e -> mapper.entityToApi(e))
+				.map(e -> {e.setServiceAddress(serviceUtil.getServiceAddress()); return e;});
 	}
 
 	@Override

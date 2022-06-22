@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import reactor.core.publisher.Mono;
 
 public interface MealService {
 
@@ -17,7 +18,7 @@ public interface MealService {
     @GetMapping(
         value    = "/meal/{mealId}",
         produces = "application/json")
-     Meal getMeal(@PathVariable int mealId);
+    Mono<Meal> getMeal(@PathVariable int mealId);
     
     /**
      * Sample usage:

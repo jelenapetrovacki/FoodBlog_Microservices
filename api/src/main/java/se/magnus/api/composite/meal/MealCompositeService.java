@@ -11,6 +11,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import reactor.core.publisher.Mono;
 
 @Api(description = "REST API for composite meal information.")
 public interface MealCompositeService {
@@ -32,7 +33,7 @@ public interface MealCompositeService {
     @GetMapping(
         value    = "/meal-composite/{mealId}",
         produces = "application/json")
-    MealAggregate getMeal(@PathVariable int mealId);
+    Mono<MealAggregate> getCompositeMeal(@PathVariable int mealId);
     
     /**
      * Sample usage:

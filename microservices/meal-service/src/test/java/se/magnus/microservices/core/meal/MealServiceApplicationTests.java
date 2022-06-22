@@ -6,16 +6,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
-
 import se.magnus.api.core.meal.Meal;
+import se.magnus.api.event.Event;
 import se.magnus.microservices.core.meal.persistence.MealRepository;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 import static org.springframework.http.HttpStatus.*;
-import static reactor.core.publisher.Mono.just;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static reactor.core.publisher.Mono.just;
+
 
 @SpringBootTest(webEnvironment=RANDOM_PORT, properties = {"spring.data.mongodb.port: 0"})
 class MealServiceApplicationTests {
@@ -25,10 +25,11 @@ class MealServiceApplicationTests {
 	
 	@Autowired
 	private MealRepository repository;
-	
+
+
 	@BeforeEach
 	public void setupDb() {
-		repository.deleteAll();
+		repository.deleteAll().block();
 	}
 	
 	@Test
@@ -36,13 +37,17 @@ class MealServiceApplicationTests {
 
 		int mealId = 1;
 
-		postAndVerifyMeal(mealId, OK);
-		assertTrue(repository.findByMealId(mealId).isPresent());
+		assertNull(repository.findByMealId(mealId).block());
+		assertEquals(0, (long)repository.count().block());
+
+		sendCreateMealEvent(mealId);
+
+		assertNotNull(repository.findByMealId(mealId).block());
+		assertEquals(1, (long)repository.count().block());
 		
 		getAndVerifyMeal(mealId, OK).jsonPath("$.mealId").isEqualTo(mealId);
 	}
 
-	
 /*	@Test
 	public void duplicateError() {
 
@@ -62,15 +67,15 @@ class MealServiceApplicationTests {
 
 		int mealId = 1;
 
-		postAndVerifyMeal(mealId, OK);
-		assertTrue(repository.findByMealId(mealId).isPresent());
+		sendCreateMealEvent(mealId);
+		assertNotNull(repository.findByMealId(mealId).block());
 
-		deleteAndVerifyMeal(mealId, OK);
-		assertFalse(repository.findByMealId(mealId).isPresent());
+		sendDeleteMealEvent(mealId);
+		assertNull(repository.findByMealId(mealId).block());
 
-		deleteAndVerifyMeal(mealId, OK);
+		sendDeleteMealEvent(mealId);
 	}
-	
+
 	@Test
 	public void getMealInvalidParameterString() {
 
@@ -115,25 +120,18 @@ class MealServiceApplicationTests {
 			.expectBody();
 	}
 	
-	private WebTestClient.BodyContentSpec postAndVerifyMeal(int mealId, HttpStatus expectedStatus) {
-		//int mealId, String mealName, String category, String reciepeDescription, double calories,String prepartionTime, int serves, String serviceAddress
-		Meal meal = new Meal(mealId, "Name " + mealId, "category", "desc", 100, "1h", 2, "SA");
-		return client.post()
-			.uri("/meal")
-			.body(just(meal), Meal.class)
-			.accept(APPLICATION_JSON)
-			.exchange()
-			.expectStatus().isEqualTo(expectedStatus)
-			.expectHeader().contentType(APPLICATION_JSON)
-			.expectBody();
+
+	private void sendCreateMealEvent(int mealId) {
+		Meal meal = new Meal(mealId, "Name " + mealId, "category", "desc",
+				100, "1h", 2, "SA");
+
+
+		//Event<Integer, Meal> event = new Event(CREATE, mealId, meal);
+		//input.send(new GenericMessage<>(event));
 	}
-	
-	private WebTestClient.BodyContentSpec deleteAndVerifyMeal(int mealId, HttpStatus expectedStatus) {
-		return client.delete()
-			.uri("/meal/" + mealId)
-			.accept(APPLICATION_JSON)
-			.exchange()
-			.expectStatus().isEqualTo(expectedStatus)
-			.expectBody();
+
+	private void sendDeleteMealEvent(int mealId) {
+		//Event<Integer, Meal> event = new Event(DELETE, mealId, null);
+		//input.send(new GenericMessage<>(event));
 	}
 }

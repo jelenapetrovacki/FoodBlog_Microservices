@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -19,7 +20,7 @@ public interface IngredientService {
     @GetMapping(
         value    = "/ingredient",
         produces = "application/json")
-    List<Ingredient> getIngredients(@RequestParam(value = "mealId", required = true) int mealId);
+    Flux<Ingredient> getIngredients(@RequestParam(value = "mealId", required = true) int mealId);
     
     /**
      * Sample usage:

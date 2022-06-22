@@ -15,6 +15,10 @@ import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import se.magnus.api.core.comment.Comment;
 import se.magnus.api.core.comment.CommentService;
 import se.magnus.api.core.ingredient.Ingredient;
@@ -28,13 +32,15 @@ import se.magnus.util.exceptions.NotFoundException;
 import se.magnus.util.http.HttpErrorInfo;
 
 import static org.springframework.http.HttpMethod.GET;
+import static reactor.core.publisher.Flux.empty;
 
 @Component
 public class MealCompositeIntegration
 		implements MealService, IngredientService, CommentService, RecommendedDrinkService {
 
 	private static final Logger LOG = LoggerFactory.getLogger(MealCompositeIntegration.class);
-	private final RestTemplate restTemplate;
+
+	private final WebClient webClient;
 	private final ObjectMapper mapper;
 
 	private final String mealServiceUrl;
@@ -43,7 +49,7 @@ public class MealCompositeIntegration
 	private final String commentServiceUrl;
 
 	@Autowired
-	public MealCompositeIntegration(RestTemplate restTemplate, ObjectMapper mapper,
+	public MealCompositeIntegration(WebClient.Builder webClient, RestTemplate restTemplate, ObjectMapper mapper,
 
 			@Value("${app.meal-service.host}") String mealServiceHost,
 			@Value("${app.meal-service.port}") int mealServicePort,
@@ -59,30 +65,23 @@ public class MealCompositeIntegration
 			
 			) {
 
-		this.restTemplate = restTemplate;
+		this.webClient = webClient.build();
 		this.mapper = mapper;
 
-		mealServiceUrl = "http://" + mealServiceHost + ":" + mealServicePort + "/meal";
-		recommendedDrinkServiceUrl = "http://" + recommendedDrinkServiceHost + ":" + recommendedDrinkServicePort
-				+ "/recommendedDrink";
-		commentServiceUrl = "http://" + commentServiceHost + ":" + commentServicePort + "/comment";
-		ingredientServiceUrl = "http://" + ingredientServiceHost + ":" + ingredientServicePort + "/ingredient";
+		mealServiceUrl = "http://" + mealServiceHost + ":" + mealServicePort;
+		recommendedDrinkServiceUrl = "http://" + recommendedDrinkServiceHost + ":" + recommendedDrinkServicePort;
+		commentServiceUrl = "http://" + commentServiceHost + ":" + commentServicePort;
+		ingredientServiceUrl = "http://" + ingredientServiceHost + ":" + ingredientServicePort;
 	}
 
 	@Override
-	public Meal getMeal(int mealId) {
-		try {
-			String url = mealServiceUrl + "/" + mealId;
-			LOG.debug("Will call getMeal API on URL: {}", url);
+	public Mono<Meal> getMeal(int mealId) {
 
-			Meal meal = restTemplate.getForObject(url, Meal.class);
-			LOG.debug("Found a meal with id: {}", meal.getMealId());
+		String url = mealServiceUrl + "/meal/" + mealId;
+		LOG.debug("Will call getMeal API on URL: {}", url);
 
-			return meal;
-
-		} catch (HttpClientErrorException ex) {
-			throw handleHttpClientException(ex);
-		}
+		return webClient.get().uri(url).retrieve()
+				.bodyToMono(Meal.class).log().onErrorMap(WebClientResponseException.class, ex -> handleException(ex));
 		
 	}
 
@@ -116,26 +115,17 @@ public class MealCompositeIntegration
 	}
 
 	@Override
-	public List<RecommendedDrink> getRecommendedDrinks(int mealId) {
-		try {
-			String url = recommendedDrinkServiceUrl + "?mealId=" +  mealId;
+	public Flux<RecommendedDrink> getRecommendedDrinks(int mealId) {
 
-			LOG.debug("Will call getRecommendedDrink API on URL: {}", url);
-			List<RecommendedDrink> recommendedDrinks = restTemplate
-					.exchange(url, GET, null, new ParameterizedTypeReference<List<RecommendedDrink>>() {
-					}).getBody();
+		String url = recommendedDrinkServiceUrl + "/recommendedDrink?mealId=" +  mealId;
 
-			LOG.debug("Found {} recommendedDrinks for a meal with id: {}", recommendedDrinks.size(), mealId);
-			return recommendedDrinks;
+		LOG.debug("Will call getRecommendedDrink API on URL: {}", url);
 
-		} catch (Exception ex) {
-			LOG.warn("Got an exception while requesting recommended drinks, return zero recommended drinks: {}",
-					ex.getMessage());
-			return new ArrayList<>();
-		}
-		
+		// Return an empty result if something goes wrong to make it possible for the composite service to return partial responses
+		return webClient.get().uri(url).retrieve()
+				.bodyToFlux(RecommendedDrink.class).log().onErrorResume(error -> empty());
 	}
-	
+
 
 	@Override
 	public RecommendedDrink createRecommendedDrink(RecommendedDrink body) {
@@ -169,22 +159,13 @@ public class MealCompositeIntegration
 
 
 	@Override
-	public List<Comment> getComments(int mealId) {
-		try {
-			String url = commentServiceUrl + "?mealId=" + mealId;
+	public Flux<Comment> getComments(int mealId) {
 
-			LOG.debug("Will call getComments API on URL: {}", url);
-			List<Comment> comments = restTemplate
-					.exchange(url, GET, null, new ParameterizedTypeReference<List<Comment>>() {
-					}).getBody();
-
-			LOG.debug("Found {} comments for a meal with id: {}", comments.size(), mealId);
-			return comments;
-
-		} catch (Exception ex) {
-			LOG.warn("Got an exception while requesting comments, return zero comments: {}", ex.getMessage());
-			return new ArrayList<>();
-		}
+		String url = commentServiceUrl + "/comment?mealId=" + mealId;
+		LOG.debug("Will call getComments API on URL: {}", url);
+		// Return an empty result if something goes wrong to make it possible for the composite service to return partial responses
+		return webClient.get().uri(url).retrieve()
+				.bodyToFlux(Comment.class).log().onErrorResume(error -> empty());
 	}
 
 	@Override
@@ -217,22 +198,13 @@ public class MealCompositeIntegration
 	}
 
 	@Override
-	public List<Ingredient> getIngredients(int mealId) {
-		try {
-			String url = ingredientServiceUrl + "?mealId=" + mealId;
+	public Flux<Ingredient> getIngredients(int mealId) {
 
-			LOG.debug("Will call getIngredients API on URL: {}", url);
-			List<Ingredient> ingredients = restTemplate
-					.exchange(url, GET, null, new ParameterizedTypeReference<List<Ingredient>>() {
-					}).getBody();
-
-			LOG.debug("Found {} ingredients for a meal with id: {}", ingredients.size(), mealId);
-			return ingredients;
-
-		} catch (Exception ex) {
-			LOG.warn("Got an exception while requesting ingredients, return zero ingredients: {}", ex.getMessage());
-			return new ArrayList<>();
-		}
+		String url = ingredientServiceUrl + "/ingredient?mealId=" + mealId;
+		LOG.debug("Will call getIngredients API on URL: {}", url);
+		// Return an empty result if something goes wrong to make it possible for the composite service to return partial responses
+		return webClient.get().uri(url).retrieve()
+				.bodyToFlux(Ingredient.class).log().onErrorResume(error -> empty());
 	}
 
 	@Override
@@ -279,7 +251,31 @@ public class MealCompositeIntegration
             return ex;
         }
     }
-    
+
+	private Throwable handleException(Throwable ex) {
+
+		if (!(ex instanceof WebClientResponseException)) {
+			LOG.warn("Got a unexpected error: {}, will rethrow it", ex.toString());
+			return ex;
+		}
+
+		WebClientResponseException wcre = (WebClientResponseException)ex;
+
+		switch (wcre.getStatusCode()) {
+
+			case NOT_FOUND:
+				return new NotFoundException(getErrorMessage(wcre));
+
+			case UNPROCESSABLE_ENTITY :
+				return new InvalidInputException(getErrorMessage(wcre));
+
+			default:
+				LOG.warn("Got a unexpected HTTP error: {}, will rethrow it", wcre.getStatusCode());
+				LOG.warn("Error body: {}", wcre.getResponseBodyAsString());
+				return ex;
+		}
+	}
+
 
 	private String getErrorMessage(HttpClientErrorException ex) {
 		try {

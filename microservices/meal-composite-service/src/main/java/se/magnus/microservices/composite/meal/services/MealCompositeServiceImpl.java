@@ -1,5 +1,6 @@
 package se.magnus.microservices.composite.meal.services;
 
+import io.swagger.models.auth.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RestController;
 
+import reactor.core.publisher.Mono;
 import se.magnus.api.composite.meal.CommentSummary;
 import se.magnus.api.composite.meal.IngredientSummary;
 import se.magnus.api.composite.meal.MealAggregate;
@@ -36,20 +38,15 @@ public class MealCompositeServiceImpl implements MealCompositeService {
 	}
 
 	@Override
-	public MealAggregate getMeal(int mealId) {
-		Meal meal = integration.getMeal(mealId);
-		if (meal == null)
-			throw new NotFoundException("No meal found for mealId: " + mealId);
-
-		List<Comment> comments = integration.getComments(mealId);
-
-		List<RecommendedDrink> recommendedDrinks = integration.getRecommendedDrinks(mealId);
-
-		List<Ingredient> ingredients = integration.getIngredients(mealId);
-
-		LOG.debug("getCompositeMeal: aggregate entity found for mealId: {}", mealId);
-
-		return createMealAggregate(meal, comments, recommendedDrinks, ingredients, serviceUtil.getServiceAddress());
+	public Mono<MealAggregate> getCompositeMeal(int mealId) {
+		return Mono.zip(
+						values -> createMealAggregate((Meal) values[0], (List<Comment>) values[1], (List<RecommendedDrink>) values[2],(List<Ingredient>) values[3], serviceUtil.getServiceAddress()),
+						integration.getMeal(mealId),
+						integration.getComments(mealId).collectList(),
+						integration.getRecommendedDrinks(mealId).collectList(),
+						integration.getIngredients(mealId).collectList())
+				.doOnError(ex -> LOG.warn("getCompositeMeal failed: {}", ex.toString()))
+				.log();
 	}
 
 	@Override

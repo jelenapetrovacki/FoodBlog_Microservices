@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mongodb.DuplicateKeyException;
 
+import reactor.core.publisher.Mono;
 import se.magnus.api.core.meal.Meal;
 import se.magnus.api.core.meal.MealService;
 import se.magnus.microservices.core.meal.persistence.MealEntity;
@@ -14,6 +15,8 @@ import se.magnus.microservices.core.meal.persistence.MealRepository;
 import se.magnus.util.exceptions.InvalidInputException;
 import se.magnus.util.exceptions.NotFoundException;
 import se.magnus.util.http.ServiceUtil;
+
+import static reactor.core.publisher.Mono.error;
 
 @RestController
 public class MealServiceImpl implements MealService {
@@ -31,20 +34,16 @@ public class MealServiceImpl implements MealService {
 	}
 
 	@Override
-	public Meal getMeal(int mealId) {
+	public Mono<Meal> getMeal(int mealId) {
 
 		if (mealId < 1)
 			throw new InvalidInputException("Invalid mealId: " + mealId);
 
-		MealEntity entity = repository.findByMealId(mealId)
-				.orElseThrow(() -> new NotFoundException("No meal found for mealId: " + mealId));
-
-		Meal response = mapper.entityToApi(entity);
-		response.setServiceAddress(serviceUtil.getServiceAddress());
-
-		LOG.debug("getMeal: found mealId: {}", response.getMealId());
-
-		return response;
+		return repository.findByMealId(mealId)
+				.switchIfEmpty(error(new NotFoundException("No meal found for mealId: " + mealId)))
+				.log()
+				.map(e -> mapper.entityToApi(e))
+				.map(e -> {e.setServiceAddress(serviceUtil.getServiceAddress()); return e;});
 	}
 
 	@Override

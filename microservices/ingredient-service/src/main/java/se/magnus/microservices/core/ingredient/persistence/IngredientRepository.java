@@ -1,9 +1,8 @@
 package se.magnus.microservices.core.ingredient.persistence;
 
-import java.util.List;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import reactor.core.publisher.Flux;
 
-
-public interface IngredientRepository extends CrudRepository<IngredientEntity, String> {
-	List<IngredientEntity> findByMealId(int mealId);
+public interface IngredientRepository extends ReactiveCrudRepository<IngredientEntity, String> {
+	Flux<IngredientEntity> findByMealId(int mealId);
 }

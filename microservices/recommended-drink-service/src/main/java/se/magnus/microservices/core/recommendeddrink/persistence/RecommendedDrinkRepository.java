@@ -1,10 +1,8 @@
 package se.magnus.microservices.core.recommendeddrink.persistence;
 
-import java.util.List;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import reactor.core.publisher.Flux;
 
-import org.springframework.data.repository.CrudRepository;
-
-
-public interface RecommendedDrinkRepository extends CrudRepository<RecommendedDrinkEntity, String> {
-	List<RecommendedDrinkEntity> findByMealId(int mealId);
+public interface RecommendedDrinkRepository extends ReactiveCrudRepository<RecommendedDrinkEntity, String> {
+	Flux<RecommendedDrinkEntity> findByMealId(int mealId);
 }

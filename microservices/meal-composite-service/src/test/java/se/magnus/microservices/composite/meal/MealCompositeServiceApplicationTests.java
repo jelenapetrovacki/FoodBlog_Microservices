@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import se.magnus.api.composite.meal.CommentSummary;
 import se.magnus.api.composite.meal.IngredientSummary;
 import se.magnus.api.composite.meal.MealAggregate;
@@ -53,14 +55,18 @@ class MealCompositeServiceApplicationTests {
 	public void setUp() {
 
 		when(compositeIntegration.getMeal(MEAL_ID_OK))
-				.thenReturn(new Meal(MEAL_ID_OK, "name", "category", "desc", 100, "1h", 1, "mock-address"));
+				.thenReturn(Mono.just(new Meal(MEAL_ID_OK, "name", "category",
+						"desc", 100, "1h", 1, "mock-address")));
 		when(compositeIntegration.getRecommendedDrinks(MEAL_ID_OK)).thenReturn(
-				singletonList(
-				new RecommendedDrink(MEAL_ID_OK, 1, "name", "type", true, "glass", "brand", "mock address")));
+				Flux.fromIterable(singletonList(
+				new RecommendedDrink(MEAL_ID_OK, 1, "name", "type",
+						true, "glass", "brand", "mock address"))));
 		when(compositeIntegration.getComments(MEAL_ID_OK)).thenReturn(
-				singletonList(new Comment(MEAL_ID_OK, 1, "author", "subject", "content", null, "mock address")));
+				Flux.fromIterable(singletonList(new Comment(MEAL_ID_OK, 1, "author", "subject",
+						"content", null, "mock address"))));
 		when(compositeIntegration.getIngredients(MEAL_ID_OK)).thenReturn(
-				singletonList(new Ingredient(MEAL_ID_OK, 1, "name", 10, "g", "mock address")));
+				Flux.fromIterable(singletonList(new Ingredient(MEAL_ID_OK, 1, "name", 10,
+						"g", "mock address"))));
 				
 		when(compositeIntegration.getMeal(MEAL_ID_NOT_FOUND))
 				.thenThrow(new NotFoundException("NOT FOUND: " + MEAL_ID_NOT_FOUND));

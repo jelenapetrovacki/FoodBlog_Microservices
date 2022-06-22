@@ -28,11 +28,11 @@ public class PersistenceTests {
 
 	@BeforeEach
 	public void setupDb() {
-		repository.deleteAll();
+		repository.deleteAll().block();
 
 		//int mealId, int recommendedDrinkId, String drinkName, String drinkType, boolean nonalcoholic, String glassType, String drinkBrand
 		RecommendedDrinkEntity entity = new RecommendedDrinkEntity(1, 1, "name", "type", true, "glass", "brand");
-		savedEntity = repository.save(entity);
+		savedEntity = repository.save(entity).block();
 
 		assertEqualsRecommendedDrnik(entity, savedEntity);
 	}
@@ -41,20 +41,20 @@ public class PersistenceTests {
 	public void create() {
 
 		RecommendedDrinkEntity newEntity = new RecommendedDrinkEntity(1, 2, "name", "type", true, "glass", "brand");
-		repository.save(newEntity);
+		repository.save(newEntity).block();
 
-		RecommendedDrinkEntity foundEntity = repository.findById(newEntity.getId()).get();
+		RecommendedDrinkEntity foundEntity = repository.findById(newEntity.getId()).block();
 		assertEqualsRecommendedDrnik(newEntity, foundEntity);
 
-		assertEquals(2, repository.count());
+		assertEquals(2, (long) repository.count().block());
 	}
 
 	@Test
 	public void update() {
 		savedEntity.setDrinkName("nameUpdated");
-		repository.save(savedEntity);
+		repository.save(savedEntity).block();
 
-		RecommendedDrinkEntity foundEntity = repository.findById(savedEntity.getId()).get();
+		RecommendedDrinkEntity foundEntity = repository.findById(savedEntity.getId()).block();
 		assertEquals(1, (long) foundEntity.getVersion());
 		assertEquals("nameUpdated", foundEntity.getDrinkName());
 	}
@@ -62,12 +62,12 @@ public class PersistenceTests {
 	@Test
 	public void delete() {
 		repository.delete(savedEntity);
-		assertFalse(repository.existsById(savedEntity.getId()));
+		assertFalse(repository.existsById(savedEntity.getId()).block());
 	}
 
 	@Test
 	public void getByMealId() {
-		List<RecommendedDrinkEntity> entityList = repository.findByMealId(savedEntity.getMealId());
+		List<RecommendedDrinkEntity> entityList = repository.findByMealId(savedEntity.getMealId()).collectList().block();
 
 		assertEquals(entityList.size(), 1);
         assertEqualsRecommendedDrnik(savedEntity, entityList.get(0));
@@ -77,26 +77,26 @@ public class PersistenceTests {
 	public void optimisticLockError() {
 
 		// Store the saved entity in two separate entity objects
-		RecommendedDrinkEntity entity1 = repository.findById(savedEntity.getId()).get();
-		RecommendedDrinkEntity entity2 = repository.findById(savedEntity.getId()).get();
+		RecommendedDrinkEntity entity1 = repository.findById(savedEntity.getId()).block();
+		RecommendedDrinkEntity entity2 = repository.findById(savedEntity.getId()).block();
 
 		// Update the entity using the first entity object
 		entity1.setDrinkName("n1");
-		repository.save(entity1);
+		repository.save(entity1).block();
 
 		// Update the entity using the second entity object.
 		// This should fail since the second entity now holds a old version number, i.e.
 		// a Optimistic Lock Error
 		try {
 			entity2.setDrinkName("n2");
-			repository.save(entity2);
+			repository.save(entity2).block();
 
 			fail("Expected an OptimisticLockingFailureException");
 		} catch (OptimisticLockingFailureException e) {
 		}
 
 		// Get the updated entity from the database and verify its new sate
-		RecommendedDrinkEntity updatedEntity = repository.findById(savedEntity.getId()).get();
+		RecommendedDrinkEntity updatedEntity = repository.findById(savedEntity.getId()).block();
 		assertEquals(1, (int) updatedEntity.getVersion());
 		assertEquals("n1", updatedEntity.getDrinkName());
 	}

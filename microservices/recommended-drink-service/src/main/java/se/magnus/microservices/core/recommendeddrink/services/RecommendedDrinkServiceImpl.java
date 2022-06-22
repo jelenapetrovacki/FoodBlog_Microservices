@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.RestController;
 
+import reactor.core.publisher.Flux;
 import se.magnus.api.core.recommendeddrink.RecommendedDrink;
 import se.magnus.api.core.recommendeddrink.RecommendedDrinkService;
 import se.magnus.microservices.core.recommendeddrink.persistence.RecommendedDrinkEntity;
@@ -33,17 +34,14 @@ public class RecommendedDrinkServiceImpl implements RecommendedDrinkService {
 	}
 
 	@Override
-	public List<RecommendedDrink> getRecommendedDrinks(int mealId) {
+	public Flux<RecommendedDrink> getRecommendedDrinks(int mealId) {
 		if (mealId < 1)
 			throw new InvalidInputException("Invalid mealId: " + mealId);
 
-		List<RecommendedDrinkEntity> entityList = repository.findByMealId(mealId);
-		List<RecommendedDrink> list = mapper.entityListToApiList(entityList);
-		list.forEach(e -> e.setServiceAddress(serviceUtil.getServiceAddress()));
-
-		LOG.debug("getRecommendedDrinks: response size: {}", list.size());
-
-		return list;
+		return repository.findByMealId(mealId)
+				.log()
+				.map(e -> mapper.entityToApi(e))
+				.map(e -> {e.setServiceAddress(serviceUtil.getServiceAddress()); return e;});
 	}
 
 	@Override

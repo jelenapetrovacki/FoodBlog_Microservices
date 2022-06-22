@@ -16,6 +16,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.test.context.TestPropertySource;
 
+import reactor.test.StepVerifier;
 import se.magnus.microservices.core.meal.persistence.MealEntity;
 import se.magnus.microservices.core.meal.persistence.MealRepository;
 
@@ -30,87 +31,90 @@ public class PersistenceTests {
 
 	@BeforeEach
 	public void setupDb() {
-		repository.deleteAll();
+		StepVerifier.create(repository.deleteAll()).verifyComplete();
 
 		MealEntity entity = new MealEntity(1, "name", "cat", "desc", 100, "", 1);
-		savedEntity = repository.save(entity);
+		StepVerifier.create(repository.save(entity))
+				.expectNextMatches(createdEntity -> {
+					savedEntity = createdEntity;
+					return areMealEqual(entity, savedEntity);
+				}). verifyComplete();
 
-		assertEqualsMeal(entity, savedEntity);
 	}
 
 	@Test
 	public void create() {
 
 		MealEntity newEntity = new MealEntity(2, "name", "cat", "desc", 100, "", 1);
-		repository.save(newEntity);
+		StepVerifier.create(repository.save(newEntity))
+				.expectNextMatches(createdEntity ->
+						newEntity.getMealId() == createdEntity.getMealId())
+				.verifyComplete();
 
-		MealEntity foundEntity = repository.findById(newEntity.getId()).get();
-		assertEqualsMeal(newEntity, foundEntity);
+		StepVerifier.create(repository.findById(newEntity.getId()))
+				.expectNextMatches(foundEntity -> areMealEqual(newEntity, foundEntity))
+				.verifyComplete();
 
-		assertEquals(2, repository.count());
+		StepVerifier.create(repository.count()).expectNext(2l).verifyComplete();
 	}
 
 	@Test
 	public void update() {
 		savedEntity.setMealName("nameUpdated");
-		repository.save(savedEntity);
+		StepVerifier.create(repository.save(savedEntity))
+				.expectNextMatches(updatedEntity -> updatedEntity.getMealName().equals("nameUpdated"))
+				.verifyComplete();
 
-		MealEntity foundEntity = repository.findById(savedEntity.getId()).get();
-		assertEquals(1, (long) foundEntity.getVersion());
-		assertEquals("nameUpdated", foundEntity.getMealName());
+		StepVerifier.create(repository.findById(savedEntity.getId()))
+				.expectNextMatches(foundEntity ->
+						foundEntity.getVersion() == 1 &&
+								foundEntity.getMealName().equals("nameUpdated"))
+				.verifyComplete();
 	}
 
 	@Test
 	public void delete() {
-		repository.delete(savedEntity);
-		assertFalse(repository.existsById(savedEntity.getId()));
+		StepVerifier.create(repository.delete(savedEntity)).verifyComplete();
+		StepVerifier.create(repository.existsById(savedEntity.getId())).expectNext(false).verifyComplete();
 	}
 
 	@Test
 	public void getByMealId() {
-		Optional<MealEntity> entity = repository.findByMealId(savedEntity.getMealId());
-
-		assertTrue(entity.isPresent());
-		assertEqualsMeal(savedEntity, entity.get());
+		StepVerifier.create(repository.findByMealId(savedEntity.getMealId()))
+				.expectNextMatches(foundEntity -> areMealEqual(savedEntity, foundEntity))
+				.verifyComplete();
 	}
 
-/*	@Test
+	@Test
 	public void optimisticLockError() {
 
 		// Store the saved entity in two separate entity objects
-		MealEntity entity1 = repository.findById(savedEntity.getId()).get();
-		MealEntity entity2 = repository.findById(savedEntity.getId()).get();
+		MealEntity entity1 = repository.findById(savedEntity.getId()).block();
+		MealEntity entity2 = repository.findById(savedEntity.getId()).block();
 
 		// Update the entity using the first entity object
 		entity1.setMealName("n1");
-		repository.save(entity1);
+		repository.save(entity1).block();
 
 		// Update the entity using the second entity object.
 		// This should fail since the second entity now holds a old version number, i.e.
 		// a Optimistic Lock Error
-		try {
-			entity2.setMealName("n2");
-			repository.save(entity2);
-
-			fail("Expected an OptimisticLockingFailureException");
-		} catch (OptimisticLockingFailureException e) {
-		}
+		StepVerifier.create(repository.save(entity2)).expectError(OptimisticLockingFailureException.class).verify();
 
 		// Get the updated entity from the database and verify its new sate
-		MealEntity updatedEntity = repository.findById(savedEntity.getId()).get();
-		assertEquals(1, (int) updatedEntity.getVersion());
-		assertEquals("n1", updatedEntity.getMealName());
+		StepVerifier.create(repository.findById(savedEntity.getId()))
+				.expectNextMatches(foundEntity ->
+						foundEntity.getVersion() == 1 &&
+								foundEntity.getMealName().equals("n1"))
+				.verifyComplete();
 	}
-	*/
-/*
+
 	@Test
 	public void duplicateError() {
 		MealEntity entity = new MealEntity(savedEntity.getMealId(), "name", "cat", "desc", 100, "", 1);
-	    assertThrows(DuplicateKeyException.class, () -> {
-	    	repository.save(entity);
-	    });
+	  	StepVerifier.create(repository.save(entity)).expectError(DuplicateKeyException.class).verify();
 	}
-*/
+
 	private void assertEqualsMeal(MealEntity expectedEntity, MealEntity actualEntity) {
 		assertEquals(expectedEntity.getId(), actualEntity.getId());
 		assertEquals(expectedEntity.getVersion(), actualEntity.getVersion());
@@ -121,6 +125,19 @@ public class PersistenceTests {
 		assertEquals(expectedEntity.getCalories(), actualEntity.getCalories());
 		assertEquals(expectedEntity.getPrepartionTime(), actualEntity.getPrepartionTime());
 		assertEquals(expectedEntity.getServes(), actualEntity.getServes());
+	}
+
+	private boolean areMealEqual(MealEntity expectedEntity, MealEntity actualEntity) {
+		return
+				(expectedEntity.getId().equals(actualEntity.getId())) &&
+						(expectedEntity.getVersion() == actualEntity.getVersion()) &&
+						(expectedEntity.getMealId() == actualEntity.getMealId()) &&
+						(expectedEntity.getMealName().equals(actualEntity.getMealName())) &&
+						(expectedEntity.getCategory().equals(actualEntity.getCategory())) &&
+						(expectedEntity.getReciepeDescription().equals(actualEntity.getReciepeDescription())) &&
+						(expectedEntity.getCalories() == actualEntity.getCalories()) &&
+						(expectedEntity.getPrepartionTime().equals(actualEntity.getPrepartionTime())) &&
+						(expectedEntity.getServes() == actualEntity.getServes());
 	}
 
 }

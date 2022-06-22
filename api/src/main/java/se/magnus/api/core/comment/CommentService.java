@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import reactor.core.publisher.Flux;
 import se.magnus.api.core.ingredient.Ingredient;
 
 import java.util.Date;
@@ -22,7 +23,7 @@ public interface CommentService {
     @GetMapping(
         value    = "/comment",
         produces = "application/json")
-    List<Comment> getComments(@RequestParam(value = "mealId", required = true) int mealId);
+    Flux<Comment> getComments(@RequestParam(value = "mealId", required = true) int mealId);
    
     /**
      * Sample usage:
