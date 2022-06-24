@@ -9,6 +9,8 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.RestController;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import se.magnus.api.core.ingredient.Ingredient;
 import se.magnus.api.core.recommendeddrink.RecommendedDrink;
 import se.magnus.api.core.recommendeddrink.RecommendedDrinkService;
 import se.magnus.microservices.core.recommendeddrink.persistence.RecommendedDrinkEntity;
@@ -46,23 +48,27 @@ public class RecommendedDrinkServiceImpl implements RecommendedDrinkService {
 
 	@Override
 	public RecommendedDrink createRecommendedDrink(RecommendedDrink body) {
-		try {
-			RecommendedDrinkEntity entity = mapper.apiToEntity(body);
-			RecommendedDrinkEntity newEntity = repository.save(entity);
+		if (body.getMealId() < 1) throw new InvalidInputException("Invalid mealId: " + body.getMealId());
 
-            LOG.debug("createRecommendedDrnik: created a recommended drink entity: {}/{}", body.getMealId(), body.getRecommendedDrinkId());
-            return mapper.entityToApi(newEntity);
+		RecommendedDrinkEntity entity = mapper.apiToEntity(body);
+		Mono<RecommendedDrink> newEntity = repository.save(entity)
+				.log()
+				.onErrorMap(
+						DuplicateKeyException.class,
+						ex -> new InvalidInputException("Duplicate key, Meal Id: " + body.getMealId()
+								+ ", RecommendedDrink Id:" + body.getRecommendedDrinkId()))
+				.map(e -> mapper.entityToApi(e));
 
-        } catch (DuplicateKeyException dke) {
-            throw new InvalidInputException("Duplicate key, Meal Id: " + body.getMealId() + ", Recommended Drink Id:" + body.getRecommendedDrinkId());
-        }
+		return newEntity.block();
+
 	}
 
 	@Override
 	public void deleteRecommendedDrinks(int mealId) {
-		LOG.debug("deleteRecommendedDrniks: tries to delete recommended drniks for the meal with mealId: {}", mealId);
-        repository.deleteAll(repository.findByMealId(mealId));
+		if (mealId < 1) throw new InvalidInputException("Invalid mealId: " + mealId);
 
+		LOG.debug("deleteRecommendedDrniks: tries to delete recommended drniks for the meal with mealId: {}", mealId);
+        repository.deleteAll(repository.findByMealId(mealId)).block();
 	}
 
 }

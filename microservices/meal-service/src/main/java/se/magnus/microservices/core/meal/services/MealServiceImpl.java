@@ -48,23 +48,25 @@ public class MealServiceImpl implements MealService {
 
 	@Override
 	public Meal createMeal(Meal body) {
-		try {
-			MealEntity entity = mapper.apiToEntity(body);
-			MealEntity newEntity = repository.save(entity);
+		if (body.getMealId() < 1)
+			throw new InvalidInputException("Invalid mealId: " + body.getMealId());
 
-			LOG.debug("createMeal: entity created for mealId: {}", body.getMealId());
-			return mapper.entityToApi(newEntity);
-
-		} catch (DuplicateKeyException dke) {
-			throw new InvalidInputException("Duplicate key, Meal Id: " + body.getMealId());
-		}
+		MealEntity entity = mapper.apiToEntity(body);
+		Mono<Meal> newEntity = repository.save(entity)
+				.log()
+				.onErrorMap( DuplicateKeyException.class,
+						ex -> new InvalidInputException("Duplicate key, Meal Id: " + body.getMealId()))
+				.map(e -> mapper.entityToApi(e));
+		return newEntity.block();
 	}
 
 	@Override
 	public void deleteMeal(int mealId) {
-		 LOG.debug("deleteMeal: tries to delete an entity with mealId: {}", mealId);
-	        repository.findByMealId(mealId).ifPresent(e -> repository.delete(e));
-
+		if (mealId < 1)
+			throw new InvalidInputException("Invalid mealId: " + mealId);
+		LOG.debug("deleteMeal: tries to delete an entity with mealId: {}", mealId);
+	        repository.findByMealId(mealId).log().map(e -> repository.delete(e)).flatMap(e -> e).block();
 	}
+
 
 }

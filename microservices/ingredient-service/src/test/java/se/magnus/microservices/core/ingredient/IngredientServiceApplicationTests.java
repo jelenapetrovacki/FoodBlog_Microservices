@@ -1,20 +1,29 @@
 package se.magnus.microservices.core.ingredient;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static reactor.core.publisher.Mono.just;
+import static se.magnus.api.event.Event.Type.CREATE;
+import static se.magnus.api.event.Event.Type.DELETE;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.stream.messaging.Sink;
 import org.springframework.http.HttpStatus;
+import org.springframework.integration.channel.AbstractMessageChannel;
+import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.test.web.reactive.server.WebTestClient;
-
+import se.magnus.api.event.Event;
 import se.magnus.api.core.ingredient.Ingredient;
+import se.magnus.api.core.meal.Meal;
 import se.magnus.microservices.core.ingredient.persistence.IngredientRepository;
+import se.magnus.util.exceptions.InvalidInputException;
+
 
 @SpringBootTest(webEnvironment=RANDOM_PORT, properties = {"spring.data.mongodb.port: 0"})
 class IngredientServiceApplicationTests {
@@ -23,10 +32,16 @@ class IngredientServiceApplicationTests {
 	private WebTestClient client;
 	
 	@Autowired
-	private IngredientRepository repository; 
-	
+	private IngredientRepository repository;
+
+	@Autowired
+	private Sink channels;
+
+	private AbstractMessageChannel input = null;
+
 	@BeforeEach
 	public void setupDb() {
+		input = (AbstractMessageChannel) channels.input();
 		repository.deleteAll();
 	}
 
@@ -36,11 +51,11 @@ class IngredientServiceApplicationTests {
 
 		int mealId = 1;
 
-		postAndVerifyIngredient(mealId, 1, OK);
-		postAndVerifyIngredient(mealId, 2, OK);
-		postAndVerifyIngredient(mealId, 3, OK);
+		sendCreateIngredientEvent(mealId, 1);
+		sendCreateIngredientEvent(mealId, 2);
+		sendCreateIngredientEvent(mealId, 3);
 
-		assertEquals(3, repository.findByMealId(mealId).size());
+		assertEquals(3, (long) repository.findByMealId(mealId).count().block());
 
 		getAndVerifyIngredientsByMealId(mealId, OK)
 			.jsonPath("$.length()").isEqualTo(3)
@@ -48,40 +63,46 @@ class IngredientServiceApplicationTests {
 			.jsonPath("$[0].ingredientId").isEqualTo(1);
 	}
 
-/*	@Test
+	@Test
 	public void duplicateError() {
 
 		int mealId = 1;
 		int ingredientId = 1;
 
-		postAndVerifyIngredient(mealId, ingredientId, OK)
-			.jsonPath("$.mealId").isEqualTo(mealId)
-			.jsonPath("$.ingredientId").isEqualTo(ingredientId);
+		sendCreateIngredientEvent(mealId, ingredientId);
 
-		assertEquals(1, repository.count());
+		assertEquals(1, (long)repository.count().block());
 
-		postAndVerifyIngredient(mealId, ingredientId, UNPROCESSABLE_ENTITY)
-			.jsonPath("$.path").isEqualTo("/ingredient")
-			.jsonPath("$.message").isEqualTo("Duplicate key, Meal Id: 1, Ingredient Id:1");
+		try {
+			sendCreateIngredientEvent(mealId, ingredientId);
+			fail("Expected a MessagingException here!");
+		} catch (MessagingException me) {
+			if (me.getCause() instanceof InvalidInputException)	{
+				InvalidInputException iie = (InvalidInputException)me.getCause();
+				assertEquals("Duplicate key, Meal Id: 1, Ingredient Id:1", iie.getMessage());
+			} else {
+				fail("Expected a InvalidInputException as the root cause!");
+			}
+		}
 
-		assertEquals(1, repository.count());
+		assertEquals(1, (long)repository.count().block());
 	}
-*/
+
 	@Test
 	public void deleteIngredients() {
 
 		int mealId = 1;
 		int ingredientId = 1;
 
-		postAndVerifyIngredient(mealId, ingredientId, OK);
-		assertEquals(1, repository.findByMealId(mealId).size());
+		sendCreateIngredientEvent(mealId, ingredientId);
+		assertEquals(1, (long) repository.findByMealId(mealId).count().block());
 
-		deleteAndVerifyIngredientsByMealId(mealId, OK);
-		assertEquals(0, repository.findByMealId(mealId).size());
+		sendDeleteIngredientEvent(mealId);
+		assertEquals(0, (long) repository.findByMealId(mealId).count().block());
 
-		deleteAndVerifyIngredientsByMealId(mealId, OK);
+		sendDeleteIngredientEvent(mealId);
 	}
-	
+
 	@Test
 	public void getIngredientsMissingParameter() {
 
@@ -132,25 +153,14 @@ class IngredientServiceApplicationTests {
 			.expectBody();
 	}
 
-	private WebTestClient.BodyContentSpec postAndVerifyIngredient(int mealId, int ingredientId, HttpStatus expectedStatus) {
-		//int mealId, int ingredientId, String name, int amount, String unitOfMeasure, String serviceAddress
+	private void sendCreateIngredientEvent(int mealId, int ingredientId) {
 		Ingredient ingredient = new Ingredient(mealId, ingredientId, "Name " + ingredientId, 1, "kg", "SA");
-		return client.post()
-			.uri("/ingredient")
-			.body(just(ingredient), Ingredient.class)
-			.accept(APPLICATION_JSON)
-			.exchange()
-			.expectStatus().isEqualTo(expectedStatus)
-			.expectHeader().contentType(APPLICATION_JSON)
-			.expectBody();
+		Event<Integer, Meal> event = new Event(CREATE, mealId, ingredient);
+		input.send(new GenericMessage<>(event));
 	}
 
-	private WebTestClient.BodyContentSpec deleteAndVerifyIngredientsByMealId(int mealId, HttpStatus expectedStatus) {
-		return client.delete()
-			.uri("/ingredient?mealId=" + mealId)
-			.accept(APPLICATION_JSON)
-			.exchange()
-			.expectStatus().isEqualTo(expectedStatus)
-			.expectBody();
+	private void sendDeleteIngredientEvent(int mealId) {
+		Event<Integer, Meal> event = new Event(DELETE, mealId, null);
+		input.send(new GenericMessage<>(event));
 	}
 }

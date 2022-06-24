@@ -5,17 +5,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import se.magnus.api.core.meal.Meal;
 import se.magnus.api.event.Event;
 import se.magnus.microservices.core.meal.persistence.MealRepository;
+import org.springframework.cloud.stream.messaging.Sink;
+import org.springframework.integration.channel.AbstractMessageChannel;
+import se.magnus.util.exceptions.InvalidInputException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static reactor.core.publisher.Mono.just;
-
+import static se.magnus.api.event.Event.Type.CREATE;
+import static se.magnus.api.event.Event.Type.DELETE;
 
 @SpringBootTest(webEnvironment=RANDOM_PORT, properties = {"spring.data.mongodb.port: 0"})
 class MealServiceApplicationTests {
@@ -26,9 +31,14 @@ class MealServiceApplicationTests {
 	@Autowired
 	private MealRepository repository;
 
+	@Autowired
+	private Sink channels;
+
+	private AbstractMessageChannel input = null;
 
 	@BeforeEach
 	public void setupDb() {
+		input = (AbstractMessageChannel) channels.input();
 		repository.deleteAll().block();
 	}
 	
@@ -48,20 +58,28 @@ class MealServiceApplicationTests {
 		getAndVerifyMeal(mealId, OK).jsonPath("$.mealId").isEqualTo(mealId);
 	}
 
-/*	@Test
+	@Test
 	public void duplicateError() {
 
 		int mealId = 1;
 
-		postAndVerifyMeal(mealId, OK);
+		assertNull(repository.findByMealId(mealId).block());
+		sendCreateMealEvent(mealId);
+		assertNotNull(repository.findByMealId(mealId).block());
 
-		assertTrue(repository.findByMealId(mealId).isPresent());
-
-		postAndVerifyMeal(mealId, UNPROCESSABLE_ENTITY)
-			.jsonPath("$.path").isEqualTo("/meal")
-			.jsonPath("$.message").isEqualTo("Duplicate key, Meal Id: " + mealId);
+		try {
+			sendCreateMealEvent(mealId);
+			fail("Expected a MessagingException here!");
+		} catch (MessagingException me) {
+			if (me.getCause() instanceof InvalidInputException)	{
+				InvalidInputException iie = (InvalidInputException)me.getCause();
+				assertEquals("Duplicate key, Meal Id: " + mealId, iie.getMessage());
+			} else {
+				fail("Expected a InvalidInputException as the root cause!");
+			}
+		}
 	}
-*/
+
 	@Test
 	public void deleteMeal() {
 
@@ -126,12 +144,12 @@ class MealServiceApplicationTests {
 				100, "1h", 2, "SA");
 
 
-		//Event<Integer, Meal> event = new Event(CREATE, mealId, meal);
-		//input.send(new GenericMessage<>(event));
+		Event<Integer, Meal> event = new Event(CREATE, mealId, meal);
+		input.send(new GenericMessage<>(event));
 	}
 
 	private void sendDeleteMealEvent(int mealId) {
-		//Event<Integer, Meal> event = new Event(DELETE, mealId, null);
-		//input.send(new GenericMessage<>(event));
+		Event<Integer, Meal> event = new Event(DELETE, mealId, null);
+		input.send(new GenericMessage<>(event));
 	}
 }

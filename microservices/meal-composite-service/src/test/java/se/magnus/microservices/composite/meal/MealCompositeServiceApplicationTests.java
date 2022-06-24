@@ -79,40 +79,7 @@ class MealCompositeServiceApplicationTests {
 	void contextLoads() {
 	}
 
-	@Test
-	public void createCompositeMeal1() {
 
-		 
-		MealAggregate compositeMeal = new MealAggregate(1, "name", "category", "desc", 100, "1h", 2, null, null, null, null);
-
-		postAndVerifyMeal(compositeMeal, OK);
-	}
-	
-	@Test
-	public void createCompositeMeal2() {
-		
-		MealAggregate compositeMeal = new MealAggregate(1, "name", "category", "desc", 100, "1h", 2, 
-				singletonList(new IngredientSummary(1, "name", 100, "g")), 
-				singletonList(new CommentSummary(1, "A.P.", "Subject")), 
-				singletonList(new RecommendedDrinkSummary(1, "name", true)), null);
-
-		postAndVerifyMeal(compositeMeal, OK);
-	}
-
-	@Test
-	public void deleteCompositeMeal() {
-		MealAggregate compositeMeal = new MealAggregate(1, "name", "category", "desc", 100, "1h", 2, 
-				singletonList(new IngredientSummary(1, "name", 100, "g")), 
-				singletonList(new CommentSummary(1, "A.P.", "Subject")), 
-				singletonList(new RecommendedDrinkSummary(1, "name", true)), null);
-
-
-		postAndVerifyMeal(compositeMeal, OK);
-
-		deleteAndVerifyMeal(compositeMeal.getMealId(), OK);
-		deleteAndVerifyMeal(compositeMeal.getMealId(), OK);
-	}
-	
 	@Test
 	public void getMealById() {
 
@@ -148,20 +115,4 @@ class MealCompositeServiceApplicationTests {
 			.expectHeader().contentType(APPLICATION_JSON)
 			.expectBody();
 	}
-
-	private void postAndVerifyMeal(MealAggregate compositeMeal, HttpStatus expectedStatus) {
-		client.post()
-			.uri("/meal-composite")
-			.body(just(compositeMeal), MealAggregate.class)
-			.exchange()
-			.expectStatus().isEqualTo(expectedStatus);
-	}
-
-	private void deleteAndVerifyMeal(int mealId, HttpStatus expectedStatus) {
-		client.delete()
-			.uri("/meal-composite/" + mealId)
-			.exchange()
-			.expectStatus().isEqualTo(expectedStatus);
-	}
-
 }

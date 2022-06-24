@@ -10,6 +10,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.RestController;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import se.magnus.api.core.comment.Comment;
 import se.magnus.api.core.ingredient.Ingredient;
 import se.magnus.api.core.ingredient.IngredientService;
@@ -37,8 +38,7 @@ public class IngredientServiceImpl implements IngredientService{
 	@Override
 	public Flux<Ingredient> getIngredients(int mealId) {
 		
-		if (mealId < 1) 
-			throw new InvalidInputException("Invalid mealId: " + mealId);
+		if (mealId < 1)  throw new InvalidInputException("Invalid mealId: " + mealId);
 
 		return repository.findByMealId(mealId)
 				.log()
@@ -48,22 +48,26 @@ public class IngredientServiceImpl implements IngredientService{
 
 	@Override
 	public Ingredient createIngredient(Ingredient body) {
-		try {
-			IngredientEntity entity = mapper.apiToEntity(body);
-			IngredientEntity newEntity = repository.save(entity);
 
-            LOG.debug("createIngredient: created a ingredient entity: {}/{}", body.getMealId(), body.getIngredientId());
-            return mapper.entityToApi(newEntity);
+		if (body.getMealId() < 1) throw new InvalidInputException("Invalid mealId: " + body.getMealId());
 
-        } catch (DuplicateKeyException dke) {
-            throw new InvalidInputException("Duplicate key, Meal Id: " + body.getMealId() + ", Ingredient Id:" + body.getIngredientId());
-        }
+		IngredientEntity entity = mapper.apiToEntity(body);
+		Mono<Ingredient> newEntity = repository.save(entity)
+				.log()
+				.onErrorMap(
+						DuplicateKeyException.class,
+						ex -> new InvalidInputException("Duplicate key, Meal Id: " + body.getMealId()
+								+ ", Ingredient Id:" + body.getIngredientId()))
+				.map(e -> mapper.entityToApi(e));
+
+		return newEntity.block();
 	}
 
 	@Override
 	public void deleteIngredients(int mealId) {
+		if (mealId < 1) throw new InvalidInputException("Invalid mealId: " + mealId);
 		LOG.debug("deleteIngredients: tries to delete ingredients for the meal with mealId: {}", mealId);
-        repository.deleteAll(repository.findByMealId(mealId));
+        repository.deleteAll(repository.findByMealId(mealId)).block();
 		
 	}
 

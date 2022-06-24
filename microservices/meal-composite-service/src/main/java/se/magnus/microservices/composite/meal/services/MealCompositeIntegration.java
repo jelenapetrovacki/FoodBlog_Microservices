@@ -1,39 +1,39 @@
 package se.magnus.microservices.composite.meal.services;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.health.Health;
+import org.springframework.cloud.stream.annotation.EnableBinding;
+import org.springframework.cloud.stream.annotation.Output;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestTemplate;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import se.magnus.api.core.comment.Comment;
-import se.magnus.api.core.comment.CommentService;
-import se.magnus.api.core.ingredient.Ingredient;
-import se.magnus.api.core.ingredient.IngredientService;
 import se.magnus.api.core.meal.Meal;
 import se.magnus.api.core.meal.MealService;
+import se.magnus.api.core.ingredient.Ingredient;
+import se.magnus.api.core.ingredient.IngredientService;
 import se.magnus.api.core.recommendeddrink.RecommendedDrink;
 import se.magnus.api.core.recommendeddrink.RecommendedDrinkService;
+import se.magnus.api.core.comment.Comment;
+import se.magnus.api.core.comment.CommentService;
+import se.magnus.api.event.Event;
 import se.magnus.util.exceptions.InvalidInputException;
 import se.magnus.util.exceptions.NotFoundException;
 import se.magnus.util.http.HttpErrorInfo;
 
-import static org.springframework.http.HttpMethod.GET;
-import static reactor.core.publisher.Flux.empty;
+import java.io.IOException;
 
+import static reactor.core.publisher.Flux.empty;
+import static se.magnus.api.event.Event.Type.CREATE;
+import static se.magnus.api.event.Event.Type.DELETE;
+@EnableBinding(MealCompositeIntegration.MessageSources.class)
 @Component
 public class MealCompositeIntegration
 		implements MealService, IngredientService, CommentService, RecommendedDrinkService {
@@ -48,8 +48,32 @@ public class MealCompositeIntegration
 	private final String ingredientServiceUrl;
 	private final String commentServiceUrl;
 
+	private MessageSources messageSources;
+	public interface MessageSources {
+
+		String OUTPUT_MEALS = "output-meals";
+		String OUTPUT_RECOMMENDEDDRINKS = "output-recommendedDrinks";
+		String OUTPUT_INGREDIENTS = "output-ingredients";
+		String OUTPUT_COMMENTS = "output-comments";
+
+		@Output(OUTPUT_MEALS)
+		MessageChannel outputMeals();
+
+		@Output(OUTPUT_RECOMMENDEDDRINKS)
+		MessageChannel outputRecommendedDrinks();
+
+		@Output(OUTPUT_INGREDIENTS)
+		MessageChannel outputIngredients();
+
+		@Output(OUTPUT_COMMENTS)
+		MessageChannel outputComments();
+	}
+
 	@Autowired
-	public MealCompositeIntegration(WebClient.Builder webClient, RestTemplate restTemplate, ObjectMapper mapper,
+	public MealCompositeIntegration(
+			WebClient.Builder webClient,
+			ObjectMapper mapper,
+			MessageSources messageSources,
 
 			@Value("${app.meal-service.host}") String mealServiceHost,
 			@Value("${app.meal-service.port}") int mealServicePort,
@@ -67,6 +91,7 @@ public class MealCompositeIntegration
 
 		this.webClient = webClient.build();
 		this.mapper = mapper;
+		this.messageSources = messageSources;
 
 		mealServiceUrl = "http://" + mealServiceHost + ":" + mealServicePort;
 		recommendedDrinkServiceUrl = "http://" + recommendedDrinkServiceHost + ":" + recommendedDrinkServicePort;
@@ -87,31 +112,16 @@ public class MealCompositeIntegration
 
 	@Override
 	public Meal createMeal(Meal body) {
-		try {
-			String url = mealServiceUrl;
-			LOG.debug("Will post a new meal to URL: {}", url);
-
-			Meal meal = restTemplate.postForObject(url, body, Meal.class);
-			LOG.debug("Created a meal with id: {}", meal.getMealId());
-
-			return meal;
-
-		} catch (HttpClientErrorException ex) {
-			throw handleHttpClientException(ex);
-		}
+		messageSources.outputMeals().send(MessageBuilder.withPayload(
+				new Event(CREATE, body.getMealId(), body)
+		).build());
+		return  body;
 	}
+
 
 	@Override
 	public void deleteMeal(int mealId) {
-		try {
-            String url = mealServiceUrl + "/" + mealId;
-            LOG.debug("Will call the deleteMeal API on URL: {}", url);
-
-            restTemplate.delete(url);
-
-        } catch (HttpClientErrorException ex) {
-            throw handleHttpClientException(ex);
-        }
+		messageSources.outputMeals().send(MessageBuilder.withPayload(new Event(DELETE, mealId, null)).build());
 	}
 
 	@Override
@@ -129,34 +139,16 @@ public class MealCompositeIntegration
 
 	@Override
 	public RecommendedDrink createRecommendedDrink(RecommendedDrink body) {
-		try {
-            String url = recommendedDrinkServiceUrl;
-            LOG.debug("Will post a new recommended drink to URL: {}", url);
-
-            RecommendedDrink recommendedDrink = restTemplate.postForObject(url, body, RecommendedDrink.class);
-            LOG.debug("Created a recommended drink with id: {}", recommendedDrink.getRecommendedDrinkId());
-
-            return recommendedDrink;
-
-        } catch (HttpClientErrorException ex) {
-            throw handleHttpClientException(ex);
-        }
+		messageSources.outputRecommendedDrinks().send(MessageBuilder.withPayload(
+				new Event(CREATE, body.getMealId(), body)).build());
+		return body;
 	}
 
 	@Override
 	public void deleteRecommendedDrinks(int mealId) {
-		try {
-            String url = recommendedDrinkServiceUrl + "?mealId=" + mealId;
-            LOG.debug("Will call the deleteRecommendedDrinks() API on URL: {}", url);
-
-            restTemplate.delete(url);
-
-        } catch (HttpClientErrorException ex) {
-            throw handleHttpClientException(ex);
-        }
-
+		messageSources.outputRecommendedDrinks().send(MessageBuilder.withPayload(
+				new Event(DELETE, mealId, null)).build());
 	}
-
 
 	@Override
 	public Flux<Comment> getComments(int mealId) {
@@ -170,31 +162,15 @@ public class MealCompositeIntegration
 
 	@Override
 	public Comment createComment(Comment body) {
-		try {
-            String url = commentServiceUrl;
-            LOG.debug("Will post a new comment to URL: {}", url);
-
-            Comment comment = restTemplate.postForObject(url, body, Comment.class);
-            LOG.debug("Created a comment with id: {}", comment.getCommentId());
-
-            return comment;
-
-        } catch (HttpClientErrorException ex) {
-            throw handleHttpClientException(ex);
-        }
+		messageSources.outputComments().send(MessageBuilder.withPayload(
+				new Event(CREATE, body.getMealId(), body)).build());
+		return body;
 	}
 
 	@Override
 	public void deleteComments(int mealId) {
-		try {
-            String url = commentServiceUrl + "?mealId=" + mealId;
-            LOG.debug("Will call the deleteComments() API on URL: {}", url);
-
-            restTemplate.delete(url);
-
-        } catch (HttpClientErrorException ex) {
-            throw handleHttpClientException(ex);
-        }
+		messageSources.outputComments().send(MessageBuilder.withPayload(
+				new Event(DELETE, mealId, null)).build());
 	}
 
 	@Override
@@ -209,48 +185,41 @@ public class MealCompositeIntegration
 
 	@Override
 	public Ingredient createIngredient(Ingredient body) {
-		try {
-            String url = ingredientServiceUrl;
-            LOG.debug("Will post a new ingredient to URL: {}", url);
-
-            Ingredient ingredient = restTemplate.postForObject(url, body, Ingredient.class);
-            LOG.debug("Created a ingredient with id: {}", ingredient.getIngredientId());
-
-            return ingredient;
-
-        } catch (HttpClientErrorException ex) {
-            throw handleHttpClientException(ex);
-        }
+		messageSources.outputIngredients().send(MessageBuilder.withPayload(
+				new Event(CREATE, body.getMealId(), body)).build());
+		return body;
 	}
 
 	@Override
 	public void deleteIngredients(int mealId) {
-		try {
-            String url = ingredientServiceUrl + "?mealId=" + mealId;
-            LOG.debug("Will call the deleteIngredients() API on URL: {}", url);
-
-            restTemplate.delete(url);
-
-        } catch (HttpClientErrorException ex) {
-            throw handleHttpClientException(ex);
-        }
+		messageSources.outputIngredients().send(MessageBuilder.withPayload(
+				new Event(DELETE, mealId, null)).build());
 	}
-	
-    private RuntimeException handleHttpClientException(HttpClientErrorException ex) {
-        switch (ex.getStatusCode()) {
 
-        case NOT_FOUND:
-            return new NotFoundException(getErrorMessage(ex));
+	public Mono<Health> getMealHealth() {
+		return getHealth(mealServiceUrl);
+	}
 
-        case UNPROCESSABLE_ENTITY :
-            return new InvalidInputException(getErrorMessage(ex));
+	public Mono<Health> getRecommendedDrinkHealth() {
+		return getHealth(recommendedDrinkServiceUrl);
+	}
 
-        default:
-            LOG.warn("Got a unexpected HTTP error: {}, will rethrow it", ex.getStatusCode());
-            LOG.warn("Error body: {}", ex.getResponseBodyAsString());
-            return ex;
-        }
-    }
+	public Mono<Health> getIngredientHealth() {
+		return getHealth(ingredientServiceUrl);
+	}
+
+	public Mono<Health> getCommentHealth() {
+		return getHealth(commentServiceUrl);
+	}
+
+	private Mono<Health> getHealth(String url) {
+		url += "/actuator/health";
+		LOG.debug("Will call the Health API on URL: {}", url);
+		return webClient.get().uri(url).retrieve().bodyToMono(String.class)
+				.map(s -> new Health.Builder().up().build())
+				.onErrorResume(ex -> Mono.just(new Health.Builder().down(ex).build()))
+				.log();
+	}
 
 	private Throwable handleException(Throwable ex) {
 
@@ -277,7 +246,7 @@ public class MealCompositeIntegration
 	}
 
 
-	private String getErrorMessage(HttpClientErrorException ex) {
+	private String getErrorMessage(WebClientResponseException ex) {
 		try {
 			return mapper.readValue(ex.getResponseBodyAsString(), HttpErrorInfo.class).getMessage();
 		} catch (IOException ioex) {
