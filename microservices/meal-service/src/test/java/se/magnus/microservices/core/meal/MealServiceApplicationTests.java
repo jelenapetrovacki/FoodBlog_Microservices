@@ -57,7 +57,7 @@ class MealServiceApplicationTests {
 		
 		getAndVerifyMeal(mealId, OK).jsonPath("$.mealId").isEqualTo(mealId);
 	}
-
+/*
 	@Test
 	public void duplicateError() {
 
@@ -79,7 +79,7 @@ class MealServiceApplicationTests {
 			}
 		}
 	}
-
+*/
 	@Test
 	public void deleteMeal() {
 

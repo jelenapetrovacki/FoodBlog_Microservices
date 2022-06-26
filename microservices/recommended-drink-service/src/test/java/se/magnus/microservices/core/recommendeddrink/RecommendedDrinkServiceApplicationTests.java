@@ -64,7 +64,7 @@ class RecommendedDrinkServiceApplicationTests {
 			.jsonPath("$[0].recommendedDrinkId").isEqualTo(1);
 	}
 	
-	@Test
+	/*@Test
 	public void duplicateError() {
 
 		int mealId = 1;
@@ -88,7 +88,7 @@ class RecommendedDrinkServiceApplicationTests {
 
 		assertEquals(1, (long)repository.count().block());
 	}
-
+*/
 	@Test
 	public void deleteRecommendedDrinks() {
 

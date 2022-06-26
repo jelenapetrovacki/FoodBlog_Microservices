@@ -7,7 +7,10 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   comment:
     build: microservices/comment-service
@@ -16,7 +19,9 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       mysql:
-        condition: service_healthy      
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   ingredient:
     build: microservices/ingredient-service
@@ -24,7 +29,10 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   recommended-drink:
     build: microservices/recommended-drink-service
@@ -32,7 +40,10 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     depends_on:
-      - mongodb      
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
       
   meal-composite:
     build: microservices/meal-composite-service
@@ -41,6 +52,9 @@ services:
       - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
       
   # $ mongo
   mongodb:
@@ -49,6 +63,11 @@ services:
     ports:
       - "27017:27017"
     command: mongod --smallfiles
+    healthcheck:
+      test: "mongo --eval 'db.stats().ok'"
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # $ mysql -uroot -h127.0.0.1 -p
   mysql:
@@ -62,8 +81,19 @@ services:
       - MYSQL_USER=user
       - MYSQL_PASSWORD=pwd
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-uuser", "-ppwd", "-h", "localhost"]
+      test: "/usr/bin/mysql --user=user --password=pwd --execute \"SHOW DATABASES;\""
       interval: 10s
       timeout: 5s
       retries: 10      
       
+  rabbitmq:
+    image: rabbitmq:3.7.8-management
+    mem_limit: 350m
+    ports:
+      - 5672:5672
+      - 15672:15672
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10

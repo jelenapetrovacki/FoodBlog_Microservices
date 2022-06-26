@@ -161,7 +161,7 @@ class CommentServiceApplicationTests {
 
 	private void sendCreateCommentEvent(int mealId, int commentId) {
 		Comment comment = new Comment(mealId, commentId, "Author " + commentId, "subj", "content", null, "SA");
-		Event<Integer, Meal> event = new Event(CREATE, mealId, commentId);
+		Event<Integer, Meal> event = new Event(CREATE, mealId, comment);
 		input.send(new GenericMessage<>(event));
 	}
 

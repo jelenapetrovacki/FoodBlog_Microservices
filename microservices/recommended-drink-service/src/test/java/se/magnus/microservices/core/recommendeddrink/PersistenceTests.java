@@ -1,6 +1,7 @@
 package se.magnus.microservices.core.recommendeddrink;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -61,7 +62,7 @@ public class PersistenceTests {
 
 	@Test
 	public void delete() {
-		repository.delete(savedEntity);
+		repository.delete(savedEntity).block();
 		assertFalse(repository.existsById(savedEntity.getId()).block());
 	}
 

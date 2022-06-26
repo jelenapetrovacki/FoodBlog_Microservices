@@ -83,7 +83,7 @@ public class MessagingTests {
         assertEquals(0, queueComments.size());
         assertEquals(0, queueIngredients.size());
     }
-
+/*
     @Test
     public void createCompositeMeal2() {
 
@@ -142,7 +142,7 @@ public class MessagingTests {
 
         assertThat(queueComments, receivesPayloadThat(sameEventExceptCreatedAt(expectedCommentEvent)));
     }
-
+*/
     @Test
     public void deleteCompositeMeal() {
 
