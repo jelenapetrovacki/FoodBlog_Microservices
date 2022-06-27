@@ -25,7 +25,9 @@ import se.magnus.microservices.core.ingredient.persistence.IngredientRepository;
 import se.magnus.util.exceptions.InvalidInputException;
 
 
-@SpringBootTest(webEnvironment=RANDOM_PORT, properties = {"spring.data.mongodb.port: 0"})
+@SpringBootTest(webEnvironment=RANDOM_PORT, properties = {
+		"eureka.client.enabled=false",
+		"spring.data.mongodb.port: 0"})
 class IngredientServiceApplicationTests {
 
 	@Autowired

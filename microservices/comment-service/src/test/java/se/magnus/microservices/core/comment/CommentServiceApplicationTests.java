@@ -29,7 +29,8 @@ import se.magnus.api.event.Event;
 import se.magnus.microservices.core.comment.persistence.CommentRepository;
 import se.magnus.util.exceptions.InvalidInputException;
 
-@SpringBootTest(webEnvironment=RANDOM_PORT,properties = {
+@SpringBootTest(webEnvironment=RANDOM_PORT,properties = { "logging.level.se.magnus=DEBUG",
+		"eureka.client.enabled=false",
 "spring.datasource.url=jdbc:h2:mem:review-db"})
 class CommentServiceApplicationTests {
 

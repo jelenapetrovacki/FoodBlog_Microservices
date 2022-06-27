@@ -40,13 +40,14 @@ public class MealCompositeIntegration
 
 	private static final Logger LOG = LoggerFactory.getLogger(MealCompositeIntegration.class);
 
-	private final WebClient webClient;
-	private final ObjectMapper mapper;
+	private final String mealServiceUrl = "http://meal";
+	private final String recommendedDrinkServiceUrl = "http://recommendedDrink";
+	private final String ingredientServiceUrl = "http://ingredient";
+	private final String commentServiceUrl = "http://comment";
 
-	private final String mealServiceUrl;
-	private final String recommendedDrinkServiceUrl;
-	private final String ingredientServiceUrl;
-	private final String commentServiceUrl;
+	private final WebClient.Builder webClientBuilder;
+	private WebClient webClient;
+	private final ObjectMapper mapper;
 
 	private MessageSources messageSources;
 	public interface MessageSources {
@@ -71,32 +72,15 @@ public class MealCompositeIntegration
 
 	@Autowired
 	public MealCompositeIntegration(
-			WebClient.Builder webClient,
+			WebClient.Builder webClientBuilder,
 			ObjectMapper mapper,
-			MessageSources messageSources,
-
-			@Value("${app.meal-service.host}") String mealServiceHost,
-			@Value("${app.meal-service.port}") int mealServicePort,
-
-			@Value("${app.recommended-drink-service.host}") String recommendedDrinkServiceHost,
-			@Value("${app.recommended-drink-service.port}") int recommendedDrinkServicePort,
-
-			@Value("${app.ingredient-service.host}") String ingredientServiceHost,
-			@Value("${app.ingredient-service.port}") int ingredientServicePort,
-
-			@Value("${app.comment-service.host}") String commentServiceHost,
-			@Value("${app.comment-service.port}") int commentServicePort
-			
+			MessageSources messageSources
 			) {
 
-		this.webClient = webClient.build();
+		this.webClientBuilder = webClientBuilder;
 		this.mapper = mapper;
 		this.messageSources = messageSources;
 
-		mealServiceUrl = "http://" + mealServiceHost + ":" + mealServicePort;
-		recommendedDrinkServiceUrl = "http://" + recommendedDrinkServiceHost + ":" + recommendedDrinkServicePort;
-		commentServiceUrl = "http://" + commentServiceHost + ":" + commentServicePort;
-		ingredientServiceUrl = "http://" + ingredientServiceHost + ":" + ingredientServicePort;
 	}
 
 	@Override
@@ -105,7 +89,7 @@ public class MealCompositeIntegration
 		String url = mealServiceUrl + "/meal/" + mealId;
 		LOG.debug("Will call getMeal API on URL: {}", url);
 
-		return webClient.get().uri(url).retrieve()
+		return getWebClient().get().uri(url).retrieve()
 				.bodyToMono(Meal.class).log().onErrorMap(WebClientResponseException.class, ex -> handleException(ex));
 		
 	}
@@ -132,7 +116,7 @@ public class MealCompositeIntegration
 		LOG.debug("Will call getRecommendedDrink API on URL: {}", url);
 
 		// Return an empty result if something goes wrong to make it possible for the composite service to return partial responses
-		return webClient.get().uri(url).retrieve()
+		return getWebClient().get().uri(url).retrieve()
 				.bodyToFlux(RecommendedDrink.class).log().onErrorResume(error -> empty());
 	}
 
@@ -156,7 +140,7 @@ public class MealCompositeIntegration
 		String url = commentServiceUrl + "/comment?mealId=" + mealId;
 		LOG.debug("Will call getComments API on URL: {}", url);
 		// Return an empty result if something goes wrong to make it possible for the composite service to return partial responses
-		return webClient.get().uri(url).retrieve()
+		return getWebClient().get().uri(url).retrieve()
 				.bodyToFlux(Comment.class).log().onErrorResume(error -> empty());
 	}
 
@@ -179,7 +163,7 @@ public class MealCompositeIntegration
 		String url = ingredientServiceUrl + "/ingredient?mealId=" + mealId;
 		LOG.debug("Will call getIngredients API on URL: {}", url);
 		// Return an empty result if something goes wrong to make it possible for the composite service to return partial responses
-		return webClient.get().uri(url).retrieve()
+		return getWebClient().get().uri(url).retrieve()
 				.bodyToFlux(Ingredient.class).log().onErrorResume(error -> empty());
 	}
 
@@ -215,10 +199,17 @@ public class MealCompositeIntegration
 	private Mono<Health> getHealth(String url) {
 		url += "/actuator/health";
 		LOG.debug("Will call the Health API on URL: {}", url);
-		return webClient.get().uri(url).retrieve().bodyToMono(String.class)
+		return getWebClient().get().uri(url).retrieve().bodyToMono(String.class)
 				.map(s -> new Health.Builder().up().build())
 				.onErrorResume(ex -> Mono.just(new Health.Builder().down(ex).build()))
 				.log();
+	}
+
+	private WebClient getWebClient() {
+		if (webClient == null) {
+			webClient = webClientBuilder.build();
+		}
+		return webClient;
 	}
 
 	private Throwable handleException(Throwable ex) {

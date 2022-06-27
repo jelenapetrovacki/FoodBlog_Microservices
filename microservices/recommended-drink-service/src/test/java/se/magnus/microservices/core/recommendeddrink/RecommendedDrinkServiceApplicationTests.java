@@ -27,7 +27,7 @@ import se.magnus.api.event.Event;
 import se.magnus.microservices.core.recommendeddrink.persistence.RecommendedDrinkRepository;
 import se.magnus.util.exceptions.InvalidInputException;
 
-@SpringBootTest(webEnvironment=RANDOM_PORT, properties = {"spring.data.mongodb.port: 0"})
+@SpringBootTest(webEnvironment=RANDOM_PORT, properties = {"eureka.client.enabled=false", "spring.data.mongodb.port: 0"})
 class RecommendedDrinkServiceApplicationTests {
 
 	@Autowired
