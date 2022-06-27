@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.actuate.health.Health;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Output;
 import org.springframework.messaging.MessageChannel;
@@ -180,30 +178,7 @@ public class MealCompositeIntegration
 				new Event(DELETE, mealId, null)).build());
 	}
 
-	public Mono<Health> getMealHealth() {
-		return getHealth(mealServiceUrl);
-	}
 
-	public Mono<Health> getRecommendedDrinkHealth() {
-		return getHealth(recommendedDrinkServiceUrl);
-	}
-
-	public Mono<Health> getIngredientHealth() {
-		return getHealth(ingredientServiceUrl);
-	}
-
-	public Mono<Health> getCommentHealth() {
-		return getHealth(commentServiceUrl);
-	}
-
-	private Mono<Health> getHealth(String url) {
-		url += "/actuator/health";
-		LOG.debug("Will call the Health API on URL: {}", url);
-		return getWebClient().get().uri(url).retrieve().bodyToMono(String.class)
-				.map(s -> new Health.Builder().up().build())
-				.onErrorResume(ex -> Mono.just(new Health.Builder().down(ex).build()))
-				.log();
-	}
 
 	private WebClient getWebClient() {
 		if (webClient == null) {
