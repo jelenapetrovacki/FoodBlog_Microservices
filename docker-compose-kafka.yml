@@ -120,8 +120,6 @@ services:
   meal-composite:
     build: microservices/meal-composite-service
     mem_limit: 350m
-    ports:
-      - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - MANAGEMENT_HEALTH_RABBIT_ENABLED=false
@@ -154,6 +152,11 @@ services:
     ports:
       - "27017:27017"
     command: mongod --smallfiles
+    healthcheck:
+      test: "mongo --eval 'db.stats().ok'"
+      interval: 20s
+      timeout: 5s
+      retries: 10
 
   # $ mysql -uroot -h127.0.0.1 -p
   mysql:
@@ -168,7 +171,7 @@ services:
       - MYSQL_PASSWORD=pwd
     healthcheck:
       test: "/usr/bin/mysql --user=user --password=pwd --execute \"SHOW DATABASES;\""
-      interval: 10s
+      interval: 20s
       timeout: 5s
       retries: 10
 

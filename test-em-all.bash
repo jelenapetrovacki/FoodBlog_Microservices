@@ -103,7 +103,7 @@ function waitForService() {
             echo " Give up"
             exit 1
         else
-            sleep 6
+            sleep 3
             echo -n ", retry #$n "
         fi
     done
@@ -124,7 +124,7 @@ function waitForMessageProcessing() {
             echo " Give up"
             exit 1
         else
-            sleep 6
+            sleep 3
             echo -n ", retry #$n "
         fi
     done

@@ -59,23 +59,7 @@ public class MealCompositeServiceApplication {
     }
 
 	@Autowired
-	HealthAggregator healthAggregator;
-
-	@Autowired
 	MealCompositeIntegration integration;
-
-	@Bean
-	ReactiveHealthIndicator coreServices() {
-
-		ReactiveHealthIndicatorRegistry registry = new DefaultReactiveHealthIndicatorRegistry(new LinkedHashMap<>());
-
-		registry.register("meal", () -> integration.getMealHealth());
-		registry.register("ingredient", () -> integration.getIngredientHealth());
-		registry.register("recommendedDrink", () -> integration.getRecommendedDrinkHealth());
-		registry.register("comment", () -> integration.getCommentHealth());
-
-		return new CompositeReactiveHealthIndicator(healthAggregator, registry);
-	}
 
 	@Bean
 	@LoadBalanced
