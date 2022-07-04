@@ -1,6 +1,7 @@
 package se.magnus.springcloud;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -17,8 +18,17 @@ class EurekaServerApplicationTests {
 	public void contextLoads() {
 	}
 
-	// TODO; Replace with WebTestClient
+	@Value("${app.eureka-username}")
+	private String username;
+
+	@Value("${app.eureka-password}")
+	private String password;
+
 	@Autowired
+	public void setTestRestTemplate(TestRestTemplate testRestTemplate) {
+		this.testRestTemplate = testRestTemplate.withBasicAuth(username, password);
+	}
+
 	private TestRestTemplate testRestTemplate;
 
 	@Test
