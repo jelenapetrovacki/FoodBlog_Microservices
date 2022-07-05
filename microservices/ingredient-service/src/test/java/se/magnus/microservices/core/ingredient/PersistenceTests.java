@@ -18,7 +18,7 @@ import se.magnus.microservices.core.ingredient.persistence.IngredientEntity;
 import se.magnus.microservices.core.ingredient.persistence.IngredientRepository;
 
 
-@DataMongoTest
+@DataMongoTest(properties = {"spring.cloud.config.enabled=false"})
 @TestPropertySource(properties = "spring.mongodb.embedded.version=3.5.5")
 public class PersistenceTests {
 	

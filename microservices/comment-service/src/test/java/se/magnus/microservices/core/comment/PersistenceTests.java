@@ -19,7 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@DataJpaTest
+@DataJpaTest(properties = {"spring.cloud.config.enabled=false"})
 @Transactional(propagation = NOT_SUPPORTED)
 public class PersistenceTests {
 	

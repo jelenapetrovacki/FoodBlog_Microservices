@@ -27,7 +27,7 @@ import se.magnus.util.exceptions.InvalidInputException;
 
 @SpringBootTest(webEnvironment=RANDOM_PORT, properties = {
 		"eureka.client.enabled=false",
-		"spring.data.mongodb.port: 0"})
+		"spring.data.mongodb.port: 0", "spring.cloud.config.enabled=false", "server.error.include-message=always"})
 class IngredientServiceApplicationTests {
 
 	@Autowired

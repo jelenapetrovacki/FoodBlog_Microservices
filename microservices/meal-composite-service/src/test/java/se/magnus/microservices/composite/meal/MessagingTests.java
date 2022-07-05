@@ -36,7 +36,7 @@ import static se.magnus.microservices.composite.meal.IsSameEvent.sameEventExcept
 @SpringBootTest(
         webEnvironment=RANDOM_PORT,
         classes = {MealCompositeServiceApplication.class, TestSecurityConfig.class },
-        properties = {"spring.main.allow-bean-definition-overriding=true","eureka.client.enabled=false"})
+        properties = {"spring.main.allow-bean-definition-overriding=true","eureka.client.enabled=false","spring.cloud.config.enabled=false"})
 public class MessagingTests {
 
     @Autowired

@@ -18,7 +18,7 @@ import se.magnus.microservices.core.recommendeddrink.persistence.RecommendedDrin
 import se.magnus.microservices.core.recommendeddrink.persistence.RecommendedDrinkRepository;
 
 
-@DataMongoTest
+@DataMongoTest(properties = {"spring.cloud.config.enabled=false"})
 @TestPropertySource(properties = "spring.mongodb.embedded.version=3.5.5")
 public class PersistenceTests {
 	

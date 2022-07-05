@@ -20,7 +20,7 @@ import reactor.test.StepVerifier;
 import se.magnus.microservices.core.meal.persistence.MealEntity;
 import se.magnus.microservices.core.meal.persistence.MealRepository;
 
-@DataMongoTest
+@DataMongoTest(properties = {"spring.cloud.config.enabled=false"})
 @TestPropertySource(properties = "spring.mongodb.embedded.version=3.5.5")
 public class PersistenceTests {
 
