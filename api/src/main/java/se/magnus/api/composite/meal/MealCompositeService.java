@@ -54,7 +54,7 @@ public interface MealCompositeService {
     @PostMapping(
         value    = "/meal-composite",
         consumes = "application/json")
-    void createCompositeMeal(@RequestBody MealAggregate body);
+    Mono<Void> createCompositeMeal(@RequestBody MealAggregate body);
     
     /**
      * Sample usage:
@@ -71,5 +71,5 @@ public interface MealCompositeService {
         @ApiResponse(code = 422, message = "Unprocessable entity, input parameters caused the processing to fail. See response message for more information.")
     })
     @DeleteMapping(value = "/meal-composite/{mealId}")
-    void deleteCompositeMeal(@PathVariable int mealId);
+    Mono<Void> deleteCompositeMeal(@PathVariable int mealId);
 }

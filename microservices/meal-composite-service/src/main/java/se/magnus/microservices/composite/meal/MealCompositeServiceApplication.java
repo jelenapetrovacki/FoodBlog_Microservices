@@ -58,9 +58,6 @@ public class MealCompositeServiceApplication {
                 ));
     }
 
-	@Autowired
-	MealCompositeIntegration integration;
-
 	@Bean
 	@LoadBalanced
 	public WebClient.Builder loadBalancedWebClientBuilder() {

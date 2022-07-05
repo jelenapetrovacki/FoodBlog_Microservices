@@ -9,7 +9,7 @@
 #   HOST=localhost PORT=7000 ./test-em-all.bash
 #
 : ${HOST=localhost}
-: ${PORT=8081}
+: ${PORT=8443}
 : ${MEAL_ID_INGS_RECS_COMS=2}
 : ${MEAL_ID_NOT_FOUND=14}
 : ${MEAL_ID_NO_RECS=114}
@@ -69,7 +69,7 @@ function testUrl() {
 function testCompositeCreated() {
 
     # Expect that the Meal Composite for mealId $MEAL_ID_INGS_RECS_COMS has been created with three recommendations, three ingredients and three comments
-    if ! assertCurl 200 "curl http://$HOST:$PORT/meal-composite/$MEAL_ID_INGS_RECS_COMS -s"
+    if ! assertCurl 200 "curl $AUTH -k https://$HOST:$PORT/meal-composite/$MEAL_ID_INGS_RECS_COMS -s"
     then
         echo -n "FAIL"
         return 1
@@ -135,8 +135,8 @@ function recreateComposite() {
     local mealId=$1
     local composite=$2
 
-    assertCurl 200 "curl -X DELETE http://$HOST:$PORT/meal-composite/${mealId} -s"
-    curl -X POST http://$HOST:$PORT/meal-composite -H "Content-Type: application/json" --data "$composite"
+    assertCurl 200 "curl $AUTH -X DELETE -k https://$HOST:$PORT/meal-composite/${mealId} -s"
+    curl -X POST -k https://$HOST:$PORT/meal-composite -H "Content-Type: application/json" -H "Authorization: Bearer $ACCESS_TOKEN" --data "$composite"
 }
 
 function setupTestdata() {
@@ -224,52 +224,65 @@ then
     docker-compose up -d
 fi
 
-waitForService curl http://$HOST:$PORT/actuator/health
+waitForService curl -k https://$HOST:$PORT/actuator/health
+
+ACCESS_TOKEN=$(curl -k https://writer:secret@$HOST:$PORT/oauth/token -d grant_type=password -d username=magnus -d password=password -s | jq .access_token -r)
+AUTH="-H \"Authorization: Bearer $ACCESS_TOKEN\""
 
 setupTestdata
 
 waitForMessageProcessing
 
 # Verify that a normal request works, expect three recommendedDrinks, three comments and three ingredients
-assertCurl 200 "curl http://$HOST:$PORT/meal-composite/$MEAL_ID_INGS_RECS_COMS -s"
+assertCurl 200 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_INGS_RECS_COMS $AUTH -s"
 assertEqual "$MEAL_ID_INGS_RECS_COMS" $(echo $RESPONSE | jq .mealId)
 assertEqual 3 $(echo $RESPONSE | jq ".recommendedDrinks | length")
 assertEqual 3 $(echo $RESPONSE | jq ".comments | length")
 assertEqual 3 $(echo $RESPONSE | jq ".ingredients | length")
 
 # Verify that a 404 (Not Found) error is returned for a non existing mealId (13)
-assertCurl 404 "curl http://$HOST:$PORT/meal-composite/$MEAL_ID_NOT_FOUND -s"
+assertCurl 404 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_NOT_FOUND $AUTH -s"
 
 # Verify that no comments, ingredinets and recommendedDrinks are returned for mealId 113
 # Verify that no recommendedDrink are returned for mealId $MEAL_ID_NO_RECS
-assertCurl 200 "curl http://$HOST:$PORT/meal-composite/$MEAL_ID_NO_RECS -s"
+assertCurl 200 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_NO_RECS $AUTH -s"
 assertEqual "$MEAL_ID_NO_RECS" $(echo $RESPONSE | jq .mealId)
 assertEqual 0 $(echo $RESPONSE | jq ".recommendedDrinks | length")
 assertEqual 3 $(echo $RESPONSE | jq ".comments | length")
 assertEqual 3 $(echo $RESPONSE | jq ".ingredients | length")
 
 # Verify that no comments are returned for mealId $MEAL_ID_NO_COMS
-assertCurl 200 "curl http://$HOST:$PORT/meal-composite/$MEAL_ID_NO_COMS -s"
+assertCurl 200 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_NO_COMS $AUTH -s"
 assertEqual "$MEAL_ID_NO_COMS" $(echo $RESPONSE | jq .mealId)
 assertEqual 3 $(echo $RESPONSE | jq ".recommendedDrinks | length")
 assertEqual 0 $(echo $RESPONSE | jq ".comments | length")
 assertEqual 3 $(echo $RESPONSE | jq ".ingredients | length")
 
 # Verify that no ingredients are returned for mealId $MEAL_ID_NO_INGS
-assertCurl 200 "curl http://$HOST:$PORT/meal-composite/$MEAL_ID_NO_INGS -s"
+assertCurl 200 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_NO_INGS $AUTH -s"
 assertEqual "$MEAL_ID_NO_INGS" $(echo $RESPONSE | jq .mealId)
 assertEqual 3 $(echo $RESPONSE | jq ".recommendedDrinks | length")
 assertEqual 3 $(echo $RESPONSE | jq ".comments | length")
 assertEqual 0 $(echo $RESPONSE | jq ".ingredients | length")
 
 # Verify that a 422 (Unprocessable Entity) error is returned for a mealId that is out of range (-1)
-assertCurl 422 "curl http://$HOST:$PORT/meal-composite/-1 -s"
+assertCurl 422 "curl -k https://$HOST:$PORT/meal-composite/-1 $AUTH -s"
 assertEqual "\"Invalid mealId: -1\"" "$(echo $RESPONSE | jq .message)"
 
 
 # Verify that a 400 (Bad Request) error error is returned for a mealId that is not a number, i.e. invalid format
-assertCurl 400 "curl http://$HOST:$PORT/meal-composite/invalidMealId -s"
+assertCurl 400 "curl -k https://$HOST:$PORT/meal-composite/invalidMealId $AUTH -s"
 assertEqual "\"Type mismatch.\"" "$(echo $RESPONSE | jq .message)"
+
+# Verify that a request without access token fails on 401, Unauthorized
+assertCurl 401 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_INGS_RECS_COMS -s"
+
+# Verify that the reader - client with only read scope can call the read API but not delete API.
+READER_ACCESS_TOKEN=$(curl -k https://reader:secret@$HOST:$PORT/oauth/token -d grant_type=password -d username=magnus -d password=password -s | jq .access_token -r)
+READER_AUTH="-H \"Authorization: Bearer $READER_ACCESS_TOKEN\""
+
+assertCurl 200 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_INGS_RECS_COMS $READER_AUTH -s"
+assertCurl 403 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_INGS_RECS_COMS $READER_AUTH -X DELETE -s"
 
 echo "End, all tests OK:" `date`
 

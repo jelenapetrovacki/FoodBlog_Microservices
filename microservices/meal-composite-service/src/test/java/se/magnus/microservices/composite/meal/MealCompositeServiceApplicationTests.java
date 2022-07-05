@@ -38,8 +38,10 @@ import static reactor.core.publisher.Mono.just;
 import java.util.List;
 
 //@ExtendWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = RANDOM_PORT, properties = {
-		"eureka.client.enabled=false"})
+@SpringBootTest(
+		webEnvironment=RANDOM_PORT,
+		classes = {MealCompositeServiceApplication.class, TestSecurityConfig.class },
+		properties = {"spring.main.allow-bean-definition-overriding=true","eureka.client.enabled=false"})
 class MealCompositeServiceApplicationTests {
 
 	private static final int MEAL_ID_OK = 1;

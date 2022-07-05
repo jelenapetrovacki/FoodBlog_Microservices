@@ -1,14 +1,18 @@
 package se.magnus.microservices.composite.meal.services;
 
-import io.swagger.models.auth.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.net.URL;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextImpl;
 import reactor.core.publisher.Mono;
 import se.magnus.api.composite.meal.CommentSummary;
 import se.magnus.api.composite.meal.IngredientSummary;
@@ -20,14 +24,15 @@ import se.magnus.api.core.comment.Comment;
 import se.magnus.api.core.ingredient.Ingredient;
 import se.magnus.api.core.meal.Meal;
 import se.magnus.api.core.recommendeddrink.RecommendedDrink;
-import se.magnus.util.exceptions.NotFoundException;
 import se.magnus.util.http.ServiceUtil;
 
+@SuppressWarnings("unchecked")
 @RestController
 public class MealCompositeServiceImpl implements MealCompositeService {
 
 	private static final Logger LOG = LoggerFactory.getLogger(MealCompositeServiceImpl.class);
 
+	private final SecurityContext nullSC = new SecurityContextImpl();
 	private final ServiceUtil serviceUtil;
 	private MealCompositeIntegration integration;
 
@@ -40,7 +45,8 @@ public class MealCompositeServiceImpl implements MealCompositeService {
 	@Override
 	public Mono<MealAggregate> getCompositeMeal(int mealId) {
 		return Mono.zip(
-						values -> createMealAggregate((Meal) values[0], (List<Comment>) values[1], (List<RecommendedDrink>) values[2],(List<Ingredient>) values[3], serviceUtil.getServiceAddress()),
+						values -> createMealAggregate((SecurityContext) values[0], (Meal) values[1], (List<Comment>) values[2], (List<RecommendedDrink>) values[3],(List<Ingredient>) values[4], serviceUtil.getServiceAddress()),
+											ReactiveSecurityContextHolder.getContext().defaultIfEmpty(nullSC),
 						integration.getMeal(mealId),
 						integration.getComments(mealId).collectList(),
 						integration.getRecommendedDrinks(mealId).collectList(),
@@ -48,11 +54,17 @@ public class MealCompositeServiceImpl implements MealCompositeService {
 				.doOnError(ex -> LOG.warn("getCompositeMeal failed: {}", ex.toString()))
 				.log();
 	}
-
 	@Override
-	public void createCompositeMeal(MealAggregate body) {
-		try {
+	public Mono<Void> createCompositeMeal(MealAggregate body) {
+		return ReactiveSecurityContextHolder.getContext().doOnSuccess(sc
+				-> internalCreateCompositeMeal(sc, body)).then();
 
+	}
+	public void internalCreateCompositeMeal(SecurityContext sc, MealAggregate body) {
+
+
+		try {
+			logAuthorizationInfo(sc);
 			LOG.debug("createCompositeMeal: creates a new composite entity for mealId: {}", body.getMealId());
 
 			Meal meal = new Meal(body.getMealId(), body.getMealName(), body.getCategory(), body.getReciepeDescription(),
@@ -89,27 +101,40 @@ public class MealCompositeServiceImpl implements MealCompositeService {
 			LOG.warn("createCompositeProduct failed", re);
 			throw re;
 		}
-
 	}
+
 
 	@Override
-	public void deleteCompositeMeal(int mealId) {
-		LOG.debug("deleteCompositeMeal: Deletes a meal aggregate for mealId: {}", mealId);
+	public Mono<Void> deleteCompositeMeal(int mealId) {
 
-		integration.deleteMeal(mealId);
-
-		integration.deleteIngredients(mealId);
-
-		integration.deleteComments(mealId);
-		
-		integration.deleteRecommendedDrinks(mealId);
-
-		LOG.debug("getCompositeMeal: aggregate entities deleted for mealId: {}", mealId);
+		return ReactiveSecurityContextHolder.getContext().doOnSuccess(sc -> internalDeleteCompositeMeal(sc, mealId)).then();
 
 	}
 
-	private MealAggregate createMealAggregate(Meal meal, List<Comment> comments,
+	private void internalDeleteCompositeMeal(SecurityContext sc, int mealId) {
+		try {
+			logAuthorizationInfo(sc);
+			LOG.debug("deleteCompositeMeal: Deletes a meal aggregate for mealId: {}", mealId);
+
+			integration.deleteMeal(mealId);
+
+			integration.deleteIngredients(mealId);
+
+			integration.deleteComments(mealId);
+
+			integration.deleteRecommendedDrinks(mealId);
+
+			LOG.debug("getCompositeMeal: aggregate entities deleted for mealId: {}", mealId);
+		} catch (RuntimeException re) {
+			LOG.warn("deleteCompositeMeal failed: {}", re.toString());
+			throw re;
+		}
+	}
+
+	private MealAggregate createMealAggregate(SecurityContext sc, Meal meal, List<Comment> comments,
 			List<RecommendedDrink> recommendedDrinks, List<Ingredient> ingredients, String serviceAddress) {
+
+		logAuthorizationInfo(sc);
 
 		// 1. Setup meal info
 		int mealId = meal.getMealId();
@@ -149,6 +174,31 @@ public class MealCompositeServiceImpl implements MealCompositeService {
 
 		return new MealAggregate(mealId, name, category, recipeDescription, calories, preparationTime, serves,
 				ingredientsSummaries, commentsSummaries, recommendedDrinksSummaries, serviceAddresses);
+	}
+
+	private void logAuthorizationInfo(SecurityContext sc) {
+		if (sc != null && sc.getAuthentication() != null && sc.getAuthentication() instanceof JwtAuthenticationToken) {
+			Jwt jwtToken = ((JwtAuthenticationToken)sc.getAuthentication()).getToken();
+			logAuthorizationInfo(jwtToken);
+		} else {
+			LOG.warn("No JWT based Authentication supplied, running tests are we?");
+		}
+	}
+
+	private void logAuthorizationInfo(Jwt jwt) {
+		if (jwt == null) {
+			LOG.warn("No JWT supplied, running tests are we?");
+		} else {
+			if (LOG.isDebugEnabled()) {
+				URL issuer = jwt.getIssuer();
+				List<String> audience = jwt.getAudience();
+				Object subject = jwt.getClaims().get("sub");
+				Object scopes = jwt.getClaims().get("scope");
+				Object expires = jwt.getClaims().get("exp");
+
+				LOG.debug("Authorization info: Subject: {}, scopes: {}, expires {}: issuer: {}, audience: {}", subject, scopes, expires, issuer, audience);
+			}
+		}
 	}
 
 }

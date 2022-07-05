@@ -33,12 +33,11 @@ import static se.magnus.api.event.Event.Type.CREATE;
 import static se.magnus.api.event.Event.Type.DELETE;
 import static se.magnus.microservices.composite.meal.IsSameEvent.sameEventExceptCreatedAt;
 
-@SpringBootTest(webEnvironment= RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment=RANDOM_PORT,
+        classes = {MealCompositeServiceApplication.class, TestSecurityConfig.class },
+        properties = {"spring.main.allow-bean-definition-overriding=true","eureka.client.enabled=false"})
 public class MessagingTests {
-
-    private static final int MEAL_ID_OK = 1;
-    private static final int MEAL_ID_NOT_FOUND = 2;
-    private static final int MEAL_ID_INVALID = 3;
 
     @Autowired
     private WebTestClient client;
