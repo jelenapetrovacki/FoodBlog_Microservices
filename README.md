@@ -8,12 +8,12 @@ It is a microservice architecture, implemented using `Spring Boot` and `Spring C
 The microservice system responds to the defined project task. 
 
 A microservice system should:
-- be developed using Spring Cloud and contain all the microservice components necessary for the functioning of such a system in production
-- each system component is containerized (microservice, database, etc.)
-- contains at least 5 microservices related to the application's business logic
-- to support different communications (synchronous/asynchronous) according to business logic
-- includes unit and integration tests
-- the pipeline (build/test/deploy) is clearly defined and configured
+- be developed using Spring Cloud and contain all the microservice components necessary for the functioning of such a system in production,
+- each system component is containerized (microservice, database, etc.),
+- contains at least 5 microservices related to the application's business logic,
+- to support different communications (synchronous/asynchronous) according to business logic,
+- includes unit and integration tests and
+- the pipeline (build/test/deploy) is clearly defined and configured.
 
 ## Persistence
 
