@@ -130,9 +130,3 @@ spring.cloud.stream.bindings.output-ingredients.producer:
 spring.cloud.stream.bindings.output-comments.producer:
   partition-key-expression: payload.key
   partition-count: 2
-
----
-spring.profiles: kafka
-
-management.health.rabbit.enabled: false
-spring.cloud.stream.defaultBinder: kafka

@@ -338,7 +338,7 @@ READER_AUTH="-H \"Authorization: Bearer $READER_ACCESS_TOKEN\""
 assertCurl 200 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_INGS_RECS_COMS $READER_AUTH -s"
 assertCurl 403 "curl -k https://$HOST:$PORT/meal-composite/$MEAL_ID_INGS_RECS_COMS $READER_AUTH -X DELETE -s"
 
-testCircuitBreaker
+# testCircuitBreaker
 
 echo "End, all tests OK:" `date`
 
