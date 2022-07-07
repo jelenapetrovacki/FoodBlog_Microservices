@@ -28,6 +28,8 @@ import se.magnus.microservices.composite.meal.services.MealCompositeIntegration;
 import se.magnus.util.exceptions.InvalidInputException;
 import se.magnus.util.exceptions.NotFoundException;
 
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static java.util.Collections.singletonList;
 import static org.mockito.Mockito.when;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
@@ -57,7 +59,7 @@ class MealCompositeServiceApplicationTests {
 	@BeforeEach
 	public void setUp() {
 
-		when(compositeIntegration.getMeal(MEAL_ID_OK))
+		when(compositeIntegration.getMeal(eq(MEAL_ID_OK), anyInt(), anyInt()))
 				.thenReturn(Mono.just(new Meal(MEAL_ID_OK, "name", "category",
 						"desc", 100, "1h", 1, "mock-address")));
 		when(compositeIntegration.getRecommendedDrinks(MEAL_ID_OK)).thenReturn(
@@ -71,10 +73,10 @@ class MealCompositeServiceApplicationTests {
 				Flux.fromIterable(singletonList(new Ingredient(MEAL_ID_OK, 1, "name", 10,
 						"g", "mock address"))));
 				
-		when(compositeIntegration.getMeal(MEAL_ID_NOT_FOUND))
+		when(compositeIntegration.getMeal(eq(MEAL_ID_NOT_FOUND), anyInt(), anyInt()))
 				.thenThrow(new NotFoundException("NOT FOUND: " + MEAL_ID_NOT_FOUND));
 
-		when(compositeIntegration.getMeal(MEAL_ID_INVALID))
+		when(compositeIntegration.getMeal(eq(MEAL_ID_INVALID), anyInt(), anyInt()))
 				.thenThrow(new InvalidInputException("INVALID: " + MEAL_ID_INVALID));
 	}
 

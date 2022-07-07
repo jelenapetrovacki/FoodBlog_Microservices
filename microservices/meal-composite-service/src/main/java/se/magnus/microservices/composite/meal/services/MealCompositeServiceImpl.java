@@ -2,10 +2,12 @@ package se.magnus.microservices.composite.meal.services;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.net.URL;
-
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -24,6 +26,7 @@ import se.magnus.api.core.comment.Comment;
 import se.magnus.api.core.ingredient.Ingredient;
 import se.magnus.api.core.meal.Meal;
 import se.magnus.api.core.recommendeddrink.RecommendedDrink;
+import se.magnus.util.exceptions.NotFoundException;
 import se.magnus.util.http.ServiceUtil;
 
 @SuppressWarnings("unchecked")
@@ -43,17 +46,32 @@ public class MealCompositeServiceImpl implements MealCompositeService {
 	}
 
 	@Override
-	public Mono<MealAggregate> getCompositeMeal(int mealId) {
+	public Mono<MealAggregate> getCompositeMeal(int mealId, int delay, int faultPercent) {
 		return Mono.zip(
 						values -> createMealAggregate((SecurityContext) values[0], (Meal) values[1], (List<Comment>) values[2], (List<RecommendedDrink>) values[3],(List<Ingredient>) values[4], serviceUtil.getServiceAddress()),
 											ReactiveSecurityContextHolder.getContext().defaultIfEmpty(nullSC),
-						integration.getMeal(mealId),
+						integration.getMeal(mealId, delay, faultPercent)
+								.onErrorReturn(CallNotPermittedException.class, getMealFallbackValue(mealId)),
 						integration.getComments(mealId).collectList(),
 						integration.getRecommendedDrinks(mealId).collectList(),
 						integration.getIngredients(mealId).collectList())
 				.doOnError(ex -> LOG.warn("getCompositeMeal failed: {}", ex.toString()))
 				.log();
 	}
+
+	private Meal getMealFallbackValue(int mealId) {
+
+		LOG.warn("Creating a fallback meal for mealId = {}", mealId);
+
+		if (mealId == 13) {
+			String errMsg = "Meal Id: " + mealId + " not found in fallback cache!";
+			LOG.warn(errMsg);
+			throw new NotFoundException(errMsg);
+		}
+
+		return new Meal(mealId, "Fallback meal" + mealId, "category", "Description " + mealId, 0, "1h", 0, serviceUtil.getServiceAddress());
+	}
+
 	@Override
 	public Mono<Void> createCompositeMeal(MealAggregate body) {
 		return ReactiveSecurityContextHolder.getContext().doOnSuccess(sc

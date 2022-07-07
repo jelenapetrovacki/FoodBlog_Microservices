@@ -16,6 +16,8 @@ import se.magnus.util.exceptions.InvalidInputException;
 import se.magnus.util.exceptions.NotFoundException;
 import se.magnus.util.http.ServiceUtil;
 
+import java.util.Random;
+
 import static reactor.core.publisher.Mono.error;
 
 @RestController
@@ -34,10 +36,14 @@ public class MealServiceImpl implements MealService {
 	}
 
 	@Override
-	public Mono<Meal> getMeal(int mealId) {
+	public Mono<Meal> getMeal(int mealId, int delay, int faultPercent) {
 
 		if (mealId < 1)
 			throw new InvalidInputException("Invalid mealId: " + mealId);
+
+		if (delay > 0) simulateDelay(delay);
+
+		if (faultPercent > 0) throwErrorIfBadLuck(faultPercent);
 
 		return repository.findByMealId(mealId)
 				.switchIfEmpty(error(new NotFoundException("No meal found for mealId: " + mealId)))
@@ -68,5 +74,30 @@ public class MealServiceImpl implements MealService {
 	        repository.findByMealId(mealId).log().map(e -> repository.delete(e)).flatMap(e -> e).block();
 	}
 
+	private void simulateDelay(int delay) {
+		LOG.debug("Sleeping for {} seconds...", delay);
+		try {Thread.sleep(delay * 1000);} catch (InterruptedException e) {}
+		LOG.debug("Moving on...");
+	}
+
+	private void throwErrorIfBadLuck(int faultPercent) {
+		int randomThreshold = getRandomNumber(1, 100);
+		if (faultPercent < randomThreshold) {
+			LOG.debug("We got lucky, no error occurred, {} < {}", faultPercent, randomThreshold);
+		} else {
+			LOG.debug("Bad luck, an error occurred, {} >= {}", faultPercent, randomThreshold);
+			throw new RuntimeException("Something went wrong...");
+		}
+	}
+
+	private final Random randomNumberGenerator = new Random();
+	private int getRandomNumber(int min, int max) {
+
+		if (max < min) {
+			throw new RuntimeException("Max must be greater than min");
+		}
+
+		return randomNumberGenerator.nextInt((max - min) + 1) + min;
+	}
 
 }

@@ -1,16 +1,21 @@
 package se.magnus.microservices.composite.meal.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Output;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import se.magnus.api.core.meal.Meal;
@@ -27,7 +32,8 @@ import se.magnus.util.exceptions.NotFoundException;
 import se.magnus.util.http.HttpErrorInfo;
 
 import java.io.IOException;
-
+import java.net.URI;
+import java.time.Duration;
 import static reactor.core.publisher.Flux.empty;
 import static se.magnus.api.event.Event.Type.CREATE;
 import static se.magnus.api.event.Event.Type.DELETE;
@@ -47,7 +53,9 @@ public class MealCompositeIntegration
 	private WebClient webClient;
 	private final ObjectMapper mapper;
 
-	private MessageSources messageSources;
+	private final MessageSources messageSources;
+	private final int mealServiceTimeoutSec;
+
 	public interface MessageSources {
 
 		String OUTPUT_MEALS = "output-meals";
@@ -72,23 +80,26 @@ public class MealCompositeIntegration
 	public MealCompositeIntegration(
 			WebClient.Builder webClientBuilder,
 			ObjectMapper mapper,
-			MessageSources messageSources
+			MessageSources messageSources,
+			@Value("${app.meal-service.timeoutSec}") int mealServiceTimeoutSec
 			) {
 
 		this.webClientBuilder = webClientBuilder;
 		this.mapper = mapper;
 		this.messageSources = messageSources;
+		this.mealServiceTimeoutSec = mealServiceTimeoutSec;
 
 	}
-
+	@Retry(name = "meal")
+	@CircuitBreaker(name = "meal")
 	@Override
-	public Mono<Meal> getMeal(int mealId) {
+	public Mono<Meal> getMeal(int mealId, int delay, int faultPercent) {
+		URI url = UriComponentsBuilder.fromUriString(mealServiceUrl + "/meal/{mealId}?delay={delay}&faultPercent={faultPercent}").build(mealId, delay, faultPercent);
 
-		String url = mealServiceUrl + "/meal/" + mealId;
 		LOG.debug("Will call getMeal API on URL: {}", url);
 
 		return getWebClient().get().uri(url).retrieve()
-				.bodyToMono(Meal.class).log().onErrorMap(WebClientResponseException.class, ex -> handleException(ex));
+				.bodyToMono(Meal.class).log().onErrorMap(WebClientResponseException.class, ex -> handleException(ex)).timeout(Duration.ofSeconds(mealServiceTimeoutSec));
 		
 	}
 
@@ -109,8 +120,7 @@ public class MealCompositeIntegration
 	@Override
 	public Flux<RecommendedDrink> getRecommendedDrinks(int mealId) {
 
-		String url = recommendedDrinkServiceUrl + "/recommendedDrink?mealId=" +  mealId;
-
+		URI url = UriComponentsBuilder.fromUriString(recommendedDrinkServiceUrl + "/recommendedDrink?mealId={mealId}").build(mealId);
 		LOG.debug("Will call getRecommendedDrink API on URL: {}", url);
 
 		// Return an empty result if something goes wrong to make it possible for the composite service to return partial responses
@@ -134,8 +144,7 @@ public class MealCompositeIntegration
 
 	@Override
 	public Flux<Comment> getComments(int mealId) {
-
-		String url = commentServiceUrl + "/comment?mealId=" + mealId;
+		URI url = UriComponentsBuilder.fromUriString(commentServiceUrl + "/comment?mealId={mealId}").build(mealId);
 		LOG.debug("Will call getComments API on URL: {}", url);
 		// Return an empty result if something goes wrong to make it possible for the composite service to return partial responses
 		return getWebClient().get().uri(url).retrieve()
@@ -157,8 +166,7 @@ public class MealCompositeIntegration
 
 	@Override
 	public Flux<Ingredient> getIngredients(int mealId) {
-
-		String url = ingredientServiceUrl + "/ingredient?mealId=" + mealId;
+		URI url = UriComponentsBuilder.fromUriString(ingredientServiceUrl + "/ingredient?mealId={mealId}").build(mealId);
 		LOG.debug("Will call getIngredients API on URL: {}", url);
 		// Return an empty result if something goes wrong to make it possible for the composite service to return partial responses
 		return getWebClient().get().uri(url).retrieve()
