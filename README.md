@@ -27,11 +27,11 @@ Each microservice has its own database:
 
 The image below shows the class diagram used in the project.
 
-![](C:\fakultet\Master\FoodBlog_Microservices\diagrams\class-diagram.png "Class diagram")
+![](diagrams/class-diagram.png "Class diagram")
 
 The architecture of microservices used during the development of the project is shown in the picture. All core microservices contain a persistence layer through which communication with the corresponding databases is performed.
 
-![](C:\fakultet\Master\FoodBlog_Microservices\diagrams\microservice_landscape-persistence.png)
+![](diagrams/microservice_landscape-persistence.png)
 
 Synchronous microservice communication is provided: 
 - for CREATE, READ and DELETE operations of meal-composite microservice and
@@ -40,7 +40,7 @@ Asynchronous communication takes place during the CREATE and DELETE operations o
 
 ## Microservice landscape
 
-![](C:\fakultet\Master\FoodBlog_Microservices\diagrams\microservice_landscape.png "Microservice landscape")
+![](diagrams/microservice_landscape.png "Microservice landscape")
 
 Spring Cloud is used to implement the following design patterns:
 - Service discovery,
