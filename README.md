@@ -36,6 +36,7 @@ The architecture of microservices used during the development of the project is 
 Synchronous microservice communication is provided: 
 - for CREATE, READ and DELETE operations of meal-composite microservice and
 - for READ operations of core microservices.
+
 Asynchronous communication takes place during the CREATE and DELETE operations of the core microservices. The following message systems were used: RabbitMQ and Apache Kafka.
 
 ## Microservice landscape
